@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../lib/supabase';
 
 export default function SupabaseTest() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
