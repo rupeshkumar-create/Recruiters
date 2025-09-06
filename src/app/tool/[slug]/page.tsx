@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ArrowLeft, ExternalLink, Tag, Star, TrendingUp, Clock, Target, Users, Calendar, MapPin, ChevronUp, MessageCircle, Share2, Copy, Heart, ThumbsUp, Linkedin, X } from 'lucide-react'
-import { getToolById, getFeaturedTools, getSimilarTools } from '../../../lib/data'
+import { getToolBySlug, getFeaturedTools, getSimilarTools } from '../../../lib/data'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import VotingSection from '../../../components/VotingSection'
@@ -15,7 +15,7 @@ import { useState, useEffect } from 'react'
 
 interface ToolPageProps {
   params: {
-    id: string
+    slug: string
   }
 }
 
@@ -57,7 +57,7 @@ const buttonHoverVariants = {
 }
 
 export default function ToolPage({ params }: ToolPageProps) {
-  const tool = getToolById(String(params.id))
+  const tool = getToolBySlug(String(params.slug))
   const [votes, setVotes] = useState(0)
   const [hasVoted, setHasVoted] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -380,7 +380,7 @@ export default function ToolPage({ params }: ToolPageProps) {
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {similarTools.map((similarTool) => (
-                        <Link key={similarTool.id} href={`/tool/${similarTool.id}`}>
+                        <Link key={similarTool.id} href={`/tool/${similarTool.slug}`}>
                           <motion.div
                             className="p-4 border border-neutral-200 rounded-xl hover:shadow-md transition-all duration-300 cursor-pointer muted-card hover:bg-gradient-to-br hover:from-orange-50/20 hover:to-neutral-50/40 group"
                             whileHover={{ scale: 1.01, y: -2 }}
@@ -416,31 +416,7 @@ export default function ToolPage({ params }: ToolPageProps) {
 
           {/* Right Column */}
           <div className="space-y-6">
-            {/* Visit Website */}
-            <motion.div variants={itemVariants}>
-              <Card className="border-0 shadow-sm orange-bg-light">
-                <CardHeader>
-                  <CardTitle className="text-xl muted-text">Get Started</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <motion.div
-                    variants={buttonHoverVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                  >
-                    <Button
-                      asChild
-                      className="w-full orange-bg hover:bg-orange-600 text-white"
-                    >
-                      <a href={tool.url} target="_blank" rel="noopener noreferrer">
-                        Visit Website
-                        <ExternalLink className="w-4 h-4 ml-2" />
-                      </a>
-                    </Button>
-                  </motion.div>
-                </CardContent>
-              </Card>
-            </motion.div>
+
 
             {/* Featured Tools Slider */}
             {featuredTools.length > 0 && (
@@ -455,7 +431,7 @@ export default function ToolPage({ params }: ToolPageProps) {
                   <CardContent>
                     <div className="space-y-8">
                       {featuredTools.map((featuredTool, index) => (
-                        <Link key={featuredTool.id} href={`/tool/${featuredTool.id}`}>
+                        <Link key={featuredTool.id} href={`/tool/${featuredTool.slug}`}>
                           <motion.div
                             className="p-4 mb-4 border border-neutral-100 rounded-lg hover:border-neutral-200 hover:shadow-sm transition-all duration-200 cursor-pointer group muted-card"
                             initial={{ opacity: 0, x: 20 }}

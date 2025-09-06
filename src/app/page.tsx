@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
-import { Search, ExternalLink, Plus, Sparkles, Zap } from 'lucide-react'
+import { useState, useMemo, useRef, useEffect } from 'react'
+import { Search, ExternalLink, Plus, Sparkles, Zap, ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import SubmissionForm from '../components/SubmissionForm'
 import EmailSubscription from '../components/EmailSubscription'
 import FeaturedTag from '../components/FeaturedTag'
-import { mockTools, categories, getToolsByCategory, getFeaturedTools } from '../lib/data'
-import SupabaseTest from '../components/SupabaseTest'
+import TypingIcon from '../components/TypingIcon'
+import { csvTools } from '../lib/data'
+
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -88,12 +90,12 @@ const scrollCardVariants = {
   }
 }
 
-// Scroll Animation Component
 function ScrollAnimatedCard({ children, index }: { children: React.ReactNode, index: number }) {
   const ref = useRef(null)
   const isInView = useInView(ref, { 
     once: true, 
-    margin: "-100px 0px -100px 0px" 
+    margin: "-100px 0px",
+    amount: 0.3
   })
 
   return (
@@ -104,7 +106,6 @@ function ScrollAnimatedCard({ children, index }: { children: React.ReactNode, in
       animate={isInView ? "visible" : "hidden"}
       whileHover="hover"
       transition={{ delay: index * 0.1 }}
-      className="cursor-pointer"
     >
       {children}
     </motion.div>
@@ -112,27 +113,192 @@ function ScrollAnimatedCard({ children, index }: { children: React.ReactNode, in
 }
 
 export default function HomePage() {
-  const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
+  const [searchTerm, setSearchTerm] = useState('')
   const [showSubmissionForm, setShowSubmissionForm] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
+  const [tools, setTools] = useState<any[]>(csvTools) // Initialize with csvTools to prevent hydration mismatch
+  const [isClient, setIsClient] = useState(false)
+  
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const suggestionsRef = useRef<HTMLDivElement>(null)
 
-  const featuredTools = useMemo(() => getFeaturedTools(), [])
-
-  const filteredTools = useMemo(() => {
-    let tools = selectedCategory === 'All' ? mockTools : getToolsByCategory(selectedCategory)
+  // Load approved tools from Supabase API on component mount
+  useEffect(() => {
+    setIsClient(true)
     
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase()
-      tools = tools.filter(tool => 
-        tool.name.toLowerCase().includes(searchLower) ||
-        tool.tagline.toLowerCase().includes(searchLower) ||
-        tool.content.toLowerCase().includes(searchLower) ||
-        tool.categories.toLowerCase().includes(searchLower)
-      )
+    const fetchTools = async () => {
+      try {
+        const response = await fetch('/api/tools')
+        if (response.ok) {
+          const toolsData = await response.json()
+          setTools(toolsData)
+        } else {
+          console.error('Failed to fetch tools from API, using CSV fallback')
+          // Keep csvTools as fallback when API fails
+          setTools(csvTools)
+        }
+      } catch (error) {
+        console.error('Error fetching tools:', error, 'using CSV fallback')
+        // Keep csvTools as fallback when API fails
+        setTools(csvTools)
+      }
     }
     
-    return tools
-  }, [selectedCategory, searchTerm])
+    fetchTools()
+  }, [])
+
+  const getSearchScore = (tool: any, searchTerm: string): number => {
+    const searchWords = searchTerm.toLowerCase().split(' ').filter(word => word.length > 0)
+    let score = 0
+    
+    searchWords.forEach(word => {
+      const toolName = tool.name.toLowerCase()
+      const toolTagline = tool.tagline.toLowerCase()
+      const toolContent = tool.content.toLowerCase()
+      const toolCategories = tool.categories.toLowerCase()
+      
+      // Exact title match gets highest priority (score: 1000)
+      if (toolName === word || toolName.includes(word)) {
+        score += toolName === word ? 1000 : 500
+      }
+      // Description/tagline match gets medium priority (score: 100)
+      else if (toolTagline.includes(word) || toolContent.includes(word)) {
+        score += 100
+      }
+      // Category/tag match gets lowest priority (score: 10)
+      else if (toolCategories.includes(word)) {
+        score += 10
+      }
+    })
+    
+    return score
+  }
+
+  // Generate categories from current tools to prevent hydration mismatch
+  const categories = useMemo(() => {
+    const uniqueCategories = Array.from(
+      new Set(tools.map(tool => tool.categories).filter(Boolean))
+    ).sort()
+    return ['All', ...uniqueCategories]
+  }, [tools])
+
+  // Helper function to get tools by category
+  const getToolsByCategory = (category: string) => {
+    if (category === 'All') {
+      return tools
+    }
+    return tools.filter(tool => 
+      tool.categories.toLowerCase().includes(category.toLowerCase())
+    )
+  }
+
+  const filteredTools = useMemo(() => {
+    let filteredTools = selectedCategory === 'All' ? tools : getToolsByCategory(selectedCategory)
+    
+    // Filter out hidden tools from public view
+    filteredTools = filteredTools.filter(tool => !tool.hidden)
+    
+    if (searchTerm) {
+      const searchWords = searchTerm.toLowerCase().split(' ').filter(word => word.length > 0)
+      
+      // Filter and score tools
+      const scoredTools = filteredTools
+        .map(tool => ({
+          ...tool,
+          searchScore: getSearchScore(tool, searchTerm)
+        }))
+        .filter(tool => tool.searchScore > 0)
+        .sort((a, b) => b.searchScore - a.searchScore)
+      
+      return scoredTools
+    }
+    
+    return filteredTools
+  }, [selectedCategory, searchTerm, tools])
+
+  const featuredTools = tools.filter(tool => tool.featured && !tool.hidden)
+
+  const suggestions = useMemo(() => {
+    if (searchTerm.length < 2) return []
+    
+    // Score and sort suggestions using the same prioritized algorithm
+    const scoredSuggestions = tools
+      .filter(tool => !tool.hidden)
+      .map(tool => ({
+        ...tool,
+        searchScore: getSearchScore(tool, searchTerm)
+      }))
+      .filter(tool => tool.searchScore > 0)
+      .sort((a, b) => b.searchScore - a.searchScore)
+      .slice(0, 8)
+    
+    return scoredSuggestions
+  }, [searchTerm, tools])
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!showSuggestions || suggestions.length === 0) return
+      
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault()
+          setSelectedSuggestionIndex(prev => 
+            prev < suggestions.length - 1 ? prev + 1 : 0
+          )
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          setSelectedSuggestionIndex(prev => 
+            prev > 0 ? prev - 1 : suggestions.length - 1
+          )
+          break
+        case 'Enter':
+          e.preventDefault()
+          if (selectedSuggestionIndex >= 0) {
+            const selectedTool = suggestions[selectedSuggestionIndex]
+            router.push(`/tool/${selectedTool.id}`)
+          }
+          break
+        case 'Escape':
+          setShowSuggestions(false)
+          setSelectedSuggestionIndex(-1)
+          break
+      }
+    }
+    
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [showSuggestions, suggestions, selectedSuggestionIndex])
+
+  // Handle clicks outside suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node) &&
+          searchInputRef.current && !searchInputRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false)
+        setSelectedSuggestionIndex(-1)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setSearchTerm(value)
+    setShowSuggestions(value.length >= 2)
+    setSelectedSuggestionIndex(-1)
+  }
+
+  const router = useRouter()
+
+  const handleSuggestionClick = (tool: any): void => {
+    router.push(`/tool/${tool.id}`)
+  }
 
   return (
     <div className="min-h-screen muted-gradient flex flex-col">
@@ -183,14 +349,84 @@ export default function HomePage() {
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.2 }}
             >
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 muted-text-light w-5 h-5" />
+              <div className="absolute left-4 top-1/2 transform -translate-y-1/2 muted-text-light">
+                <TypingIcon size={20} />
+              </div>
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder="Search by tool name, use case, or category..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchChange}
+                onFocus={() => searchTerm.length >= 2 && setShowSuggestions(true)}
                 className="w-full pl-12 pr-6 py-4 border border-neutral-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent muted-card text-lg shadow-sm hover:shadow-md transition-all duration-300 muted-text"
+                autoComplete="off"
               />
+              
+              {/* Dropdown Suggestions */}
+              <AnimatePresence>
+                {showSuggestions && suggestions.length > 0 && (
+                  <motion.div
+                    ref={suggestionsRef}
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-neutral-200 rounded-2xl shadow-lg z-50 max-h-80 overflow-y-auto"
+                  >
+                    {suggestions.map((tool, index) => (
+                      <motion.div
+                        key={tool.id}
+                        className={`px-4 py-3 cursor-pointer transition-all duration-200 flex items-center gap-3 ${
+                          index === selectedSuggestionIndex
+                            ? 'bg-orange-50 border-l-4 border-orange-500'
+                            : 'hover:bg-neutral-50'
+                        } ${
+                          index === 0 ? 'rounded-t-2xl' : ''
+                        } ${
+                          index === suggestions.length - 1 ? 'rounded-b-2xl' : 'border-b border-neutral-100'
+                        }`}
+                        onClick={() => handleSuggestionClick(tool)}
+                        whileHover={{ x: 4 }}
+                        transition={{ duration: 0.1 }}
+                      >
+                        <div className="w-8 h-8 flex-shrink-0 bg-gray-50 rounded-lg p-1.5">
+                          <img 
+                            src={tool.logo.includes('linkedin.com') ? `https://images.weserv.nl/?url=${encodeURIComponent(tool.logo)}&w=32&h=32&fit=contain&bg=white` : tool.logo}
+                            alt={`${tool.name} logo`}
+                            className="w-full h-full object-contain rounded"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              if (target.src.includes('weserv.nl')) {
+                                target.src = tool.logo;
+                                return;
+                              }
+                              target.style.display = 'none';
+                              const fallback = target.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white font-bold text-xs hidden">
+                            {tool.name.charAt(0).toUpperCase()}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm muted-text truncate text-left">{tool.name}</div>
+                          <div className="text-xs muted-text-light truncate text-left">{tool.tagline}</div>
+                        </div>
+                        {index === selectedSuggestionIndex && (
+                          <div className="text-orange-500 text-xs font-medium">Enter</div>
+                        )}
+                      </motion.div>
+                    ))}
+                    
+                    {/* Footer hint */}
+                    <div className="px-4 py-2 text-xs muted-text-light text-center border-t border-neutral-100 bg-neutral-50 rounded-b-2xl">
+                      Use ↑↓ to navigate, Enter to select, Esc to close
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           </motion.div>
 
@@ -211,6 +447,7 @@ export default function HomePage() {
             </motion.button>
           </motion.div>
         </motion.div>
+        
         {/* Category Filter */}
         <motion.div 
           className="flex flex-wrap justify-center gap-3 mb-16"
@@ -236,56 +473,62 @@ export default function HomePage() {
           ))}
         </motion.div>
 
-        {/* Featured Tools Section */}
-        {featuredTools.length > 0 && (
-          <motion.div 
-            className="mb-20"
-            variants={itemVariants}
-          >
-            <h2 className="text-3xl font-bold muted-text mb-8 text-center">Featured Tools</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {featuredTools.slice(0, 4).map((tool, index) => (
-                <ScrollAnimatedCard key={tool.id} index={index}>
-                  <Link href={`/tool/${tool.id}`}>
-                    <div className="muted-card rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group card-hover">
-                      {tool.featured && <FeaturedTag size="sm" />}
-                      <div className="absolute inset-0 bg-gradient-to-br from-orange-50/30 to-neutral-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      <div className="relative z-10">
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className="w-12 h-12 flex-shrink-0 bg-gray-50 rounded-xl p-2">
-                            <img 
-                              src={tool.logo.includes('linkedin.com') ? `https://images.weserv.nl/?url=${encodeURIComponent(tool.logo)}&w=40&h=40&fit=contain&bg=white` : tool.logo}
-                              alt={`${tool.name} logo`}
-                              className="w-full h-full object-contain rounded-lg"
-                              onError={(e) => {
-                                const target = e.currentTarget;
-                                if (target.src.includes('weserv.nl')) {
-                                  target.src = tool.logo;
-                                  return;
-                                }
-                                target.style.display = 'none';
-                                const fallback = target.nextElementSibling as HTMLElement;
-                                if (fallback) fallback.style.display = 'flex';
-                              }}
-                            />
-                            <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg items-center justify-center text-white font-bold text-sm hidden">
-                              {tool.name.charAt(0).toUpperCase()}
-                            </div>
+      {/* Featured Tools Section */}
+      {featuredTools.length > 0 && (
+        <motion.div 
+          className="mb-20 container mx-auto px-4 max-w-7xl"
+          variants={itemVariants}
+        >
+          <h2 className="text-3xl font-bold muted-text mb-8 text-center">Featured Tools</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {featuredTools.slice(0, 4).map((tool, index) => (
+              <ScrollAnimatedCard key={tool.id} index={index}>
+                <Link href={`/tool/${tool.slug}`}>
+                  <div className="muted-card rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group card-hover h-64 flex flex-col">
+                    {tool.featured && <FeaturedTag className="z-20" />}
+                    <div className="absolute inset-0 bg-gradient-to-br from-orange-50/30 to-neutral-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative z-10 flex flex-col h-full">
+                      <div className="flex items-center justify-center mb-4 mt-2">
+                        <motion.div 
+                          className="w-16 h-16 bg-gray-50 rounded-xl p-3 flex-shrink-0"
+                          variants={logoVariants}
+                          whileHover="hover"
+                        >
+                          <img 
+                            src={tool.logo.includes('linkedin.com') ? `https://images.weserv.nl/?url=${encodeURIComponent(tool.logo)}&w=64&h=64&fit=contain&bg=white` : tool.logo}
+                            alt={`${tool.name} logo`}
+                            className="w-full h-full object-contain rounded-lg"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              if (target.src.includes('weserv.nl')) {
+                                target.src = tool.logo;
+                                return;
+                              }
+                              target.style.display = 'none';
+                              const fallback = target.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-xl hidden">
+                            {tool.name.charAt(0).toUpperCase()}
                           </div>
-                          <h3 className="font-bold text-lg muted-text group-hover:orange-accent transition-colors">{tool.name}</h3>
-                        </div>
-                        <p className="muted-text-light text-sm line-clamp-2 leading-relaxed">{tool.tagline}</p>
+                        </motion.div>
+                      </div>
+                      <div className="flex-grow flex flex-col justify-between">
+                        <h3 className="font-bold text-lg muted-text mb-2 text-center group-hover:orange-accent transition-colors line-clamp-2">{tool.name}</h3>
+                        <p className="muted-text-light text-sm text-center line-clamp-3 leading-relaxed">{tool.tagline}</p>
                       </div>
                     </div>
-                  </Link>
-                </ScrollAnimatedCard>
-              ))}
-            </div>
-          </motion.div>
-        )}
+                  </div>
+                </Link>
+              </ScrollAnimatedCard>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
-        {/* Tools Grid */}
+      {/* Tools Grid */}
+      <div className="container mx-auto px-4 max-w-7xl mb-20">
         <h2 className="text-3xl font-bold muted-text mb-8 text-center">{selectedCategory} Tools</h2>
         <AnimatePresence mode="wait">
           <motion.div 
@@ -298,12 +541,12 @@ export default function HomePage() {
           >
             {filteredTools.map((tool, index) => (
               <ScrollAnimatedCard key={tool.id} index={index}>
-                <Link href={`/tool/${tool.id}`}>
+                <Link href={`/tool/${tool.slug}`}>
                   <div className="muted-card rounded-2xl shadow-sm p-8 hover:shadow-md transition-all duration-300 group h-full flex flex-col relative overflow-hidden card-hover">
-                    {tool.featured && <FeaturedTag size="sm" />}
+                    {tool.featured && <FeaturedTag size="sm" className="z-20" />}
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-50/20 to-neutral-50/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <div className="relative z-10">
-                      <div className="flex items-start gap-5 mb-6">
+                      <div className="flex items-start gap-5 mb-6 mt-2">
                         <div className="w-14 h-14 flex-shrink-0 bg-gray-50 rounded-2xl p-3">
                           <img 
                             src={tool.logo.includes('linkedin.com') ? `https://images.weserv.nl/?url=${encodeURIComponent(tool.logo)}&w=48&h=48&fit=contain&bg=white` : tool.logo}
@@ -311,12 +554,10 @@ export default function HomePage() {
                             className="w-full h-full object-contain rounded-lg"
                             onError={(e) => {
                               const target = e.currentTarget;
-                              // Try original URL if proxy fails
                               if (target.src.includes('weserv.nl')) {
                                 target.src = tool.logo;
                                 return;
                               }
-                              // Show fallback if original also fails
                               target.style.display = 'none';
                               const fallback = target.nextElementSibling as HTMLElement;
                               if (fallback) fallback.style.display = 'flex';
@@ -335,63 +576,28 @@ export default function HomePage() {
                           </span>
                         </div>
                       </div>
-                      
-                      <p className="muted-text-light text-sm mb-6 flex-1 line-clamp-2 leading-relaxed">
+                      <p className="muted-text-light text-sm leading-relaxed mb-4 flex-grow">
                         {tool.tagline}
                       </p>
-                      
-                      <div className="flex items-center justify-between mt-auto">
-                         <button
-                           onClick={(e) => {
-                             e.preventDefault()
-                             e.stopPropagation()
-                             window.open(tool.url, '_blank')
-                           }}
-                           className="inline-flex items-center gap-2 orange-bg text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-orange-600 transition-all duration-200 hover:scale-105 shadow-sm"
-                         >
-                           <ExternalLink className="w-4 h-4" />
-                           Visit
-                         </button>
-                         <div className="muted-text-light group-hover:orange-accent transition-colors text-lg">
-                           →
-                         </div>
-                       </div>
-                     </div>
-                   </div>
-                 </Link>
+                      <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+                        <button className="flex items-center gap-2 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-md transition-colors">
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Visit Website</span>
+                        </button>
+                        <div className="flex items-center text-orange-500 group-hover:text-orange-600 transition-colors">
+                          <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
               </ScrollAnimatedCard>
             ))}
           </motion.div>
         </AnimatePresence>
-
-        {filteredTools.length === 0 && (
-          <motion.div 
-            className="text-center py-20"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <motion.div 
-              className="text-gray-400 text-8xl mb-6"
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            >
-              🔍
-            </motion.div>
-            <h3 className="text-2xl font-bold muted-text mb-3">No tools found</h3>
-            <p className="text-lg muted-text-light">Try adjusting your search or category filter</p>
-          </motion.div>
-        )}
-        </div>
-      </motion.div>
-
-      {/* Supabase Connection Test */}
-      <div className="py-12 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-8">Supabase Connection Test</h2>
-          <SupabaseTest />
-        </div>
       </div>
+
+
 
       {/* Email Subscription Section - Footer */}
       <EmailSubscription className="" />
@@ -401,6 +607,8 @@ export default function HomePage() {
         isOpen={showSubmissionForm} 
         onClose={() => setShowSubmissionForm(false)} 
       />
+        </div>
+      </motion.div>
     </div>
   )
 }

@@ -23,6 +23,7 @@ export default function CommentSection({ toolId, toolName }: CommentSectionProps
   const [newComment, setNewComment] = useState('')
   const [showAuthForm, setShowAuthForm] = useState(false)
   const [pendingComment, setPendingComment] = useState('')
+
   const { userData, isAuthenticated, setUserData } = useUserSession()
 
   // Load comments from localStorage on component mount
@@ -32,6 +33,8 @@ export default function CommentSection({ toolId, toolName }: CommentSectionProps
       setComments(JSON.parse(savedComments))
     }
   }, [toolId])
+
+
 
   const handleCommentSubmit = () => {
     if (!newComment.trim()) {
@@ -204,6 +207,8 @@ export default function CommentSection({ toolId, toolName }: CommentSectionProps
         title="Post a comment"
         description={`Please provide your information to post a comment about ${toolName}. This helps us maintain a professional community.`}
       />
+
+
     </>
   )
 }

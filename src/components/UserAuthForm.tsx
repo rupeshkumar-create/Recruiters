@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { X, User, Building, Briefcase, Linkedin, Mail, Shield } from 'lucide-react'
 
@@ -48,43 +48,41 @@ export default function UserAuthForm({ isOpen, onClose, onSubmit, title, descrip
   
   const [errors, setErrors] = useState<Partial<UserData>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [captchaAnswer, setCaptchaAnswer] = useState('')
-  const [captchaQuestion, setCaptchaQuestion] = useState({ question: '', answer: 0 })
+  const [captchaToken, setCaptchaToken] = useState('')
   const [captchaError, setCaptchaError] = useState('')
+  const captchaRef = useRef<HTMLDivElement>(null)
 
-  // Generate simple math captcha
-  const generateCaptcha = () => {
-    const num1 = Math.floor(Math.random() * 10) + 1
-    const num2 = Math.floor(Math.random() * 10) + 1
-    const operations = ['+', '-', '*']
-    const operation = operations[Math.floor(Math.random() * operations.length)]
-    
-    let answer = 0
-    let question = ''
-    
-    switch (operation) {
-      case '+':
-        answer = num1 + num2
-        question = `${num1} + ${num2}`
-        break
-      case '-':
-        answer = Math.max(num1, num2) - Math.min(num1, num2)
-        question = `${Math.max(num1, num2)} - ${Math.min(num1, num2)}`
-        break
-      case '*':
-        answer = num1 * num2
-        question = `${num1} × ${num2}`
-        break
-    }
-    
-    setCaptchaQuestion({ question, answer })
-  }
-
+  // Load Friendly Captcha script
   useEffect(() => {
-    if (isOpen) {
-      generateCaptcha()
+    if (isOpen && !document.querySelector('script[src*="friendly-challenge"]')) {
+      const script = document.createElement('script')
+      script.type = 'module'
+      script.src = 'https://cdn.jsdelivr.net/npm/friendly-challenge@0.9.16/widget.module.min.js'
+      script.async = true
+      script.defer = true
+      document.head.appendChild(script)
     }
   }, [isOpen])
+
+  // Set up captcha event listener
+  useEffect(() => {
+    const handleCaptchaSolved = (e: any) => {
+      setCaptchaToken(e.detail.solution)
+      setCaptchaError('')
+    }
+
+    if (captchaRef.current) {
+      captchaRef.current.addEventListener('frc-captcha-solved', handleCaptchaSolved)
+      
+      return () => {
+        if (captchaRef.current) {
+          captchaRef.current.removeEventListener('frc-captcha-solved', handleCaptchaSolved)
+        }
+      }
+    }
+  }, [isOpen])
+
+
 
   const validateForm = (): boolean => {
     const newErrors: Partial<UserData> = {}
@@ -130,10 +128,39 @@ export default function UserAuthForm({ isOpen, onClose, onSubmit, title, descrip
       return
     }
 
-    if (parseInt(captchaAnswer) !== captchaQuestion.answer) {
-      setCaptchaError('Please solve the math problem correctly to verify you are human')
-      generateCaptcha()
-      setCaptchaAnswer('')
+    if (!captchaToken) {
+      setCaptchaError('Please complete the captcha verification')
+      return
+    }
+
+    // Verify captcha with our API endpoint
+    try {
+      const captchaResponse = await fetch('/api/verify-captcha', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          solution: captchaToken
+        })
+      })
+      
+      const captchaResult = await captchaResponse.json()
+      if (!captchaResult.success) {
+        setCaptchaError('Captcha verification failed. Please try again.')
+        // Reset captcha
+        setCaptchaToken('')
+        if (captchaRef.current) {
+          const captchaWidget = captchaRef.current.querySelector('.frc-captcha')
+          if (captchaWidget) {
+            (captchaWidget as any).reset()
+          }
+        }
+        return
+      }
+    } catch (error) {
+      setCaptchaError('Captcha verification failed. Please try again.')
+      setCaptchaToken('')
       return
     }
 
@@ -159,7 +186,17 @@ export default function UserAuthForm({ isOpen, onClose, onSubmit, title, descrip
       email: ''
     })
     setErrors({})
-    setCaptchaAnswer('')
+    setCaptchaToken('')
+    setCaptchaError('')
+    
+    // Reset captcha widget
+    if (captchaRef.current) {
+      const captchaWidget = captchaRef.current.querySelector('.frc-captcha')
+      if (captchaWidget) {
+        (captchaWidget as any).reset()
+      }
+    }
+    
     onClose()
   }
 
@@ -170,15 +207,7 @@ export default function UserAuthForm({ isOpen, onClose, onSubmit, title, descrip
     }
   }
 
-  const handleCaptchaChange = (value: string) => {
-    setCaptchaAnswer(value)
-    setCaptchaError('')
-    
-    // Real-time validation
-    if (value && parseInt(value) !== captchaQuestion.answer) {
-      setCaptchaError('Incorrect answer. Please try again.')
-    }
-  }
+
 
   if (!isOpen) return null
 
@@ -332,18 +361,13 @@ export default function UserAuthForm({ isOpen, onClose, onSubmit, title, descrip
               Human Verification *
             </label>
             <p className="text-sm muted-text-light mb-2">
-              Please solve this math problem: <strong>{captchaQuestion.question} = ?</strong>
+              Please complete the verification below to prove you're human.
             </p>
-            <input
-              type="number"
-              value={captchaAnswer}
-              onChange={(e) => handleCaptchaChange(e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                captchaError ? 'border-red-300' : 'border-neutral-200'
-              }`}
-              placeholder="Enter your answer"
-              required
-            />
+            <div 
+              ref={captchaRef}
+              className="frc-captcha" 
+              data-sitekey="FCMV995O03V7RIMQ"
+            ></div>
             {captchaError && (
               <p className="text-red-500 text-xs mt-1">{captchaError}</p>
             )}

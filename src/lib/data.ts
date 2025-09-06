@@ -4,10 +4,15 @@ export interface Tool {
   url: string;
   tagline: string;
   content: string;
+  description?: string;
   categories: string;
   logo: string;
   slug: string;
   featured: boolean;
+  hidden?: boolean;
+  approved?: boolean;
+  status?: 'pending' | 'approved' | 'rejected';
+  submitterEmail?: string;
 }
 
 // Local storage key
@@ -1730,26 +1735,48 @@ export function clearToolsFromStorage(): void {
 }
 
 // Load tools (consistent for SSR/client rendering)
-export const mockTools = loadToolsFromStorage();
+// Note: This will be dynamically loaded on client-side
+export let mockTools = loadToolsFromStorage();
+
+// Function to refresh mockTools from storage
+export function refreshMockTools(): void {
+  if (typeof window !== 'undefined') {
+    mockTools = getToolsFromStorage();
+  }
+}
 
 // Extract unique categories from tools
 export const categories = ['All', ...Array.from(
   new Set(mockTools.map(tool => tool.categories).filter(Boolean))
 ).sort()];
 
-// Helper function to get tool by ID
-export function getToolById(id: string): Tool | undefined {
-  // Use csvTools directly for server-side rendering, then client-side will hydrate
-  const tools = typeof window === 'undefined' ? csvTools : loadToolsFromStorage();
-  return tools.find(tool => tool.id === id);
+// Function to get unique categories (excluding 'All')
+export function getUniqueCategories(): string[] {
+  const tools = typeof window === 'undefined' ? csvTools : getToolsFromStorage();
+  return Array.from(
+    new Set(tools.map(tool => tool.categories).filter(Boolean))
+  ).sort();
 }
 
-// Helper function to get tools by category
+// Helper function to get tool by ID (approved tools only)
+export function getToolById(id: string): Tool | undefined {
+  const approvedTools = getApprovedTools();
+  return approvedTools.find(tool => tool.id === id);
+}
+
+// Helper function to get tool by slug (approved tools only)
+export function getToolBySlug(slug: string): Tool | undefined {
+  const approvedTools = getApprovedTools();
+  return approvedTools.find(tool => tool.slug === slug);
+}
+
+// Helper function to get tools by category (approved tools only)
 export function getToolsByCategory(category: string): Tool[] {
+  const approvedTools = getApprovedTools();
   if (category === 'All') {
-    return mockTools;
+    return approvedTools;
   }
-  return mockTools.filter(tool => 
+  return approvedTools.filter(tool => 
     tool.categories.toLowerCase().includes(category.toLowerCase())
   );
 }
@@ -1776,7 +1803,7 @@ export function addTool(tool: Omit<Tool, 'id'>): Tool {
 
 // Function to update a tool
 export function updateTool(id: string, updates: Partial<Tool>): Tool | null {
-  const currentTools = loadToolsFromStorage();
+  const currentTools = getToolsFromStorage();
   const toolIndex = currentTools.findIndex(tool => tool.id === id);
   
   if (toolIndex === -1) return null;
@@ -1784,34 +1811,35 @@ export function updateTool(id: string, updates: Partial<Tool>): Tool | null {
   const updatedTool = { ...currentTools[toolIndex], ...updates, id };
   currentTools[toolIndex] = updatedTool;
   saveToolsToStorage(currentTools);
+  refreshMockTools(); // Refresh the mockTools array
   
   return updatedTool;
 }
 
 // Function to delete a tool
 export function deleteTool(id: string): boolean {
-  const currentTools = loadToolsFromStorage();
+  const currentTools = getToolsFromStorage();
   const filteredTools = currentTools.filter(tool => tool.id !== id);
   
   if (filteredTools.length === currentTools.length) return false;
   
   saveToolsToStorage(filteredTools);
+  refreshMockTools(); // Refresh the mockTools array
   return true;
 }
 
-// Function to get featured tools
+// Function to get featured tools (approved tools only)
 export function getFeaturedTools(): Tool[] {
-  // Always use csvTools for featured tools since that's where featured flags are set
-  const featured = csvTools.filter(tool => tool.featured);
-  return featured;
+  const approvedTools = getApprovedTools();
+  return approvedTools.filter(tool => tool.featured);
 }
 
-// Function to get similar tools based on categories
+// Function to get similar tools based on categories (approved tools only)
 export function getSimilarTools(currentToolId: string, categories: string): Tool[] {
-  const tools = typeof window === 'undefined' ? csvTools : loadToolsFromStorage();
+  const approvedTools = getApprovedTools();
   const categoryList = categories.toLowerCase().split(',').map(cat => cat.trim());
   
-  return tools
+  return approvedTools
     .filter(tool => {
       if (tool.id === currentToolId) return false;
       const toolCategories = tool.categories.toLowerCase().split(',').map(cat => cat.trim());
@@ -1866,4 +1894,28 @@ export function addToolToDirectory(tool: Tool): Tool | null {
   saveToolsToStorage(currentTools);
   
   return tool;
+}
+
+// DEPRECATED: Function to approve a submitted tool and move it to main directory
+// This function is now handled by the Supabase API endpoint /api/submissions/approve
+export async function approveSubmittedTool(submissionId: string): Promise<Tool | null> {
+  console.warn('approveSubmittedTool is deprecated. Use /api/submissions/approve endpoint instead.');
+  return null;
+}
+
+// DEPRECATED: Function to reject a submitted tool
+// This function is now handled by the Supabase API endpoint DELETE /api/submissions
+export function rejectSubmittedTool(submissionId: string): boolean {
+  console.warn('rejectSubmittedTool is deprecated. Use DELETE /api/submissions endpoint instead.');
+  return false;
+}
+
+// Function to get only approved tools for public directory
+export function getApprovedTools(): Tool[] {
+  const allTools = getToolsFromStorage();
+  // Return CSV tools (which are pre-approved) and user-submitted approved tools
+  return allTools.filter(tool => 
+    // CSV tools don't have status field, so they're considered approved
+    !tool.status || tool.status === 'approved'
+  );
 }

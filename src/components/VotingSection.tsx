@@ -28,25 +28,42 @@ export default function VotingSection({
   const [upvotes, setUpvotes] = useState(initialUpvotes)
   const [downvotes, setDownvotes] = useState(initialDownvotes)
   const [userVote, setUserVote] = useState<'up' | 'down' | null>(null)
-  const [showAuthForm, setShowAuthForm] = useState(false)
   const [pendingVoteType, setPendingVoteType] = useState<'up' | 'down' | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [showAuthForm, setShowAuthForm] = useState(false)
   const { userData, isAuthenticated, setUserData } = useUserSession()
 
-  // Check if user has already voted for this tool and set initial vote state
   useEffect(() => {
-    const votes = JSON.parse(localStorage.getItem(`votes_${toolId}`) || '[]')
-    if (votes.length > 0) {
-      setUserVote(votes[0].type)
+    loadVotes()
+  }, [toolId, userData])
+
+  const loadVotes = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/votes?toolId=${toolId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setUpvotes(data.upvotes)
+        setDownvotes(data.downvotes)
+        
+        // Check if current user has voted
+        if (userData?.email) {
+          const userExistingVote = data.votes.find((vote: any) => 
+            vote.user_email === userData.email
+          )
+          if (userExistingVote) {
+            setUserVote(userExistingVote.vote_type)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading votes:', error)
+    } finally {
+      setLoading(false)
     }
-    
-    // Load initial vote counts from global storage
-    const globalVotes = JSON.parse(localStorage.getItem('globalVotes') || '{}')
-    const toolVotes = globalVotes[toolId]
-    if (toolVotes) {
-      setUpvotes(toolVotes.upvotes || 0)
-      setDownvotes(toolVotes.downvotes || 0)
-    }
-  }, [toolId])
+  }
+
+
 
   const handleVoteClick = (voteType: 'up' | 'down') => {
     // If user already voted for the same type, undo the vote
@@ -62,111 +79,104 @@ export default function VotingSection({
     }
     
     // If user hasn't voted yet
-    if (isAuthenticated && userData) {
-      // User is already authenticated, vote directly
-      handleDirectVote(voteType)
-    } else {
+    if (!isAuthenticated || !userData) {
       // Show auth form
       setPendingVoteType(voteType)
       setShowAuthForm(true)
-    }
-  }
-  
-  const handleUndoVote = () => {
-    if (!userVote) return
-    
-    // Remove vote from localStorage
-    localStorage.removeItem(`votes_${toolId}`)
-    
-    // Update vote counts
-    if (userVote === 'up') {
-      setUpvotes(prev => Math.max(0, prev - 1))
     } else {
-      setDownvotes(prev => Math.max(0, prev - 1))
+      // User is already authenticated, submit vote directly
+      handleDirectVote(voteType)
     }
-    
-    // Update global vote counts
-    const globalVotes = JSON.parse(localStorage.getItem('globalVotes') || '{}')
-    if (globalVotes[toolId]) {
-      if (userVote === 'up') {
-        globalVotes[toolId].upvotes = Math.max(0, globalVotes[toolId].upvotes - 1)
-      } else {
-        globalVotes[toolId].downvotes = Math.max(0, globalVotes[toolId].downvotes - 1)
-      }
-      localStorage.setItem('globalVotes', JSON.stringify(globalVotes))
-    }
-    
-    setUserVote(null)
   }
   
-  const handleChangeVote = (newVoteType: 'up' | 'down') => {
-    if (!userVote) return
+  const handleUndoVote = async () => {
+    if (!userVote || !userData?.email) return
     
-    // Update vote counts (remove old vote, add new vote)
-    if (userVote === 'up' && newVoteType === 'down') {
-      setUpvotes(prev => Math.max(0, prev - 1))
-      setDownvotes(prev => prev + 1)
-    } else if (userVote === 'down' && newVoteType === 'up') {
-      setDownvotes(prev => Math.max(0, prev - 1))
-      setUpvotes(prev => prev + 1)
+    try {
+      const response = await fetch(`/api/votes?toolId=${toolId}&userEmail=${userData.email}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        // Update local state
+        if (userVote === 'up') {
+          setUpvotes(prev => Math.max(0, prev - 1))
+        } else {
+          setDownvotes(prev => Math.max(0, prev - 1))
+        }
+        setUserVote(null)
+      }
+    } catch (error) {
+      console.error('Error removing vote:', error)
     }
+  }
+  
+  const handleChangeVote = async (newVoteType: 'up' | 'down') => {
+    if (!userVote || !userData?.email) return
     
-    // Update localStorage with new vote
-    const vote: Vote = {
-      type: newVoteType,
-      userData: JSON.parse(localStorage.getItem(`votes_${toolId}`) || '[]')[0]?.userData || {},
-      timestamp: Date.now()
+    try {
+      const response = await fetch('/api/votes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+           toolId,
+           userEmail: userData.email,
+           userName: `${userData.firstName} ${userData.lastName}`,
+           voteType: newVoteType,
+           userData
+         })
+      })
+      
+      if (response.ok) {
+        // Update local state
+        if (userVote === 'up' && newVoteType === 'down') {
+          setUpvotes(prev => Math.max(0, prev - 1))
+          setDownvotes(prev => prev + 1)
+        } else if (userVote === 'down' && newVoteType === 'up') {
+          setDownvotes(prev => Math.max(0, prev - 1))
+          setUpvotes(prev => prev + 1)
+        }
+        setUserVote(newVoteType)
+      }
+    } catch (error) {
+      console.error('Error changing vote:', error)
     }
-    localStorage.setItem(`votes_${toolId}`, JSON.stringify([vote]))
-    
-    // Update global vote counts
-    const globalVotes = JSON.parse(localStorage.getItem('globalVotes') || '{}')
-    if (!globalVotes[toolId]) {
-      globalVotes[toolId] = { upvotes: 0, downvotes: 0 }
-    }
-    
-    if (userVote === 'up' && newVoteType === 'down') {
-      globalVotes[toolId].upvotes = Math.max(0, globalVotes[toolId].upvotes - 1)
-      globalVotes[toolId].downvotes = globalVotes[toolId].downvotes + 1
-    } else if (userVote === 'down' && newVoteType === 'up') {
-      globalVotes[toolId].downvotes = Math.max(0, globalVotes[toolId].downvotes - 1)
-      globalVotes[toolId].upvotes = globalVotes[toolId].upvotes + 1
-    }
-    
-    localStorage.setItem('globalVotes', JSON.stringify(globalVotes))
-    setUserVote(newVoteType)
   }
 
-  const handleDirectVote = (voteType: 'up' | 'down') => {
+  const handleDirectVote = async (voteType: 'up' | 'down') => {
     if (!userData) return
 
-    const vote: Vote = {
-      type: voteType,
-      userData,
-      timestamp: Date.now()
+    try {
+      const response = await fetch('/api/votes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+           toolId,
+           userEmail: userData.email,
+           userName: `${userData.firstName} ${userData.lastName}`,
+           voteType,
+           userData
+         })
+      })
+      
+      if (response.ok) {
+        // Update local state
+        if (voteType === 'up') {
+          setUpvotes(prev => prev + 1)
+        } else {
+          setDownvotes(prev => prev + 1)
+        }
+        setUserVote(voteType)
+      }
+    } catch (error) {
+      console.error('Error submitting vote:', error)
     }
-
-    // Store vote in localStorage
-    const existingVotes = JSON.parse(localStorage.getItem(`votes_${toolId}`) || '[]')
-    existingVotes.push(vote)
-    localStorage.setItem(`votes_${toolId}`, JSON.stringify(existingVotes))
-
-    // Update vote counts
-    if (voteType === 'up') {
-      setUpvotes(prev => prev + 1)
-    } else {
-      setDownvotes(prev => prev + 1)
-    }
-
-    setUserVote(voteType)
     
-    // Store global vote counts
-    const globalVotes = JSON.parse(localStorage.getItem('globalVotes') || '{}')
-    globalVotes[toolId] = {
-      upvotes: voteType === 'up' ? upvotes + 1 : upvotes,
-      downvotes: voteType === 'down' ? downvotes + 1 : downvotes
-    }
-    localStorage.setItem('globalVotes', JSON.stringify(globalVotes))
+    setPendingVoteType(null)
   }
 
   const handleVoteSubmit = async (userData: UserData) => {
@@ -174,36 +184,10 @@ export default function VotingSection({
 
     // Store user data in global session
     setUserData(userData)
-
-    const vote: Vote = {
-      type: pendingVoteType,
-      userData,
-      timestamp: Date.now()
-    }
-
-    // Store vote in localStorage (in a real app, this would be sent to a server)
-    const existingVotes = JSON.parse(localStorage.getItem(`votes_${toolId}`) || '[]')
-    existingVotes.push(vote)
-    localStorage.setItem(`votes_${toolId}`, JSON.stringify(existingVotes))
-
-    // Update vote counts
-    if (pendingVoteType === 'up') {
-      setUpvotes(prev => prev + 1)
-    } else {
-      setDownvotes(prev => prev + 1)
-    }
-
-    setUserVote(pendingVoteType)
-    setPendingVoteType(null)
     setShowAuthForm(false)
     
-    // Store global vote counts
-    const globalVotes = JSON.parse(localStorage.getItem('globalVotes') || '{}')
-    globalVotes[toolId] = {
-      upvotes: pendingVoteType === 'up' ? upvotes + 1 : upvotes,
-      downvotes: pendingVoteType === 'down' ? downvotes + 1 : downvotes
-    }
-    localStorage.setItem('globalVotes', JSON.stringify(globalVotes))
+    // Submit vote directly after authentication
+    handleDirectVote(pendingVoteType)
   }
 
   const handleCloseAuthForm = () => {
@@ -276,6 +260,8 @@ export default function VotingSection({
         title="Vote for this tool"
         description={`Please provide your information to ${pendingVoteType === 'up' ? 'upvote' : 'downvote'} ${toolName}. This helps us maintain quality and prevent spam.`}
       />
+
+
     </>
   )
 }

@@ -4,8 +4,12 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { FolderPlus, FolderMinus, Settings, Save, ArrowLeft, Search, Trash2, Plus } from 'lucide-react'
 import Link from 'next/link'
-import { mockTools, removeToolFromDirectory, addToolToDirectory } from '../../../lib/data'
-import type { Tool } from '../../../lib/data'
+// Removed mock data imports - now using Supabase API
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -28,15 +32,29 @@ const itemVariants = {
 }
 
 export default function DirectoryManagementPage() {
-  const [tools, setTools] = useState<Tool[]>([])
+  const [tools, setTools] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [changes, setChanges] = useState<Set<string>>(new Set())
   const [removedTools, setRemovedTools] = useState<Set<string>>(new Set())
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    setTools([...mockTools])
+    loadTools()
   }, [])
+
+  const loadTools = async () => {
+    try {
+      const response = await fetch('/api/tools')
+      if (response.ok) {
+        const data = await response.json()
+        setTools(data)
+      } else {
+        console.error('Failed to load tools')
+      }
+    } catch (error) {
+      console.error('Error loading tools:', error)
+    }
+  }
 
   const filteredTools = tools.filter(tool => 
     !removedTools.has(tool.id) &&
@@ -45,43 +63,70 @@ export default function DirectoryManagementPage() {
   )
 
   const handleRemoveTool = (toolId: string) => {
-    setRemovedTools(prev => new Set([...prev, toolId]))
-    setChanges(prev => new Set([...prev, toolId]))
+    setRemovedTools(prev => new Set(Array.from(prev).concat(toolId)))
+    setChanges(prev => new Set(Array.from(prev).concat(toolId)))
   }
 
-  const handleRestoreTool = (toolId: string) => {
-    const newRemovedTools = new Set(removedTools)
-    newRemovedTools.delete(toolId)
-    setRemovedTools(newRemovedTools)
-    setChanges(prev => new Set([...prev, toolId]))
-    
-    // In a real implementation, this would be handled in handleSaveChanges
-    // For now, we'll just update the UI state
+  const handleRestoreTool = async (toolId: string) => {
+    try {
+      const tool = tools.find(t => t.id === toolId);
+      if (tool) {
+        await fetch('/api/tools', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...tool,
+            hidden: false
+          }),
+        });
+        
+        const newRemovedTools = new Set(Array.from(removedTools).filter(id => id !== toolId))
+        setRemovedTools(newRemovedTools)
+        setChanges(prev => new Set(Array.from(prev).concat(toolId)))
+        
+        // Reload tools data
+        await loadTools()
+      }
+    } catch (error) {
+      console.error('Error restoring tool:', error)
+    }
   }
 
   const handleSaveChanges = async () => {
     setIsSaving(true)
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Apply changes to the actual data
-    const removedToolsList = Array.from(removedTools);
-    const originalTools = [...tools];
-    
-    // Remove tools from directory
-    removedToolsList.forEach(toolId => {
-      const tool = originalTools.find(t => t.id === toolId);
-      if (tool) {
-        removeToolFromDirectory(toolId);
+    try {
+      // Remove tools from directory by setting them as hidden
+      const removedToolsList = Array.from(removedTools);
+      
+      for (const toolId of removedToolsList) {
+        const tool = tools.find(t => t.id === toolId);
+        if (tool) {
+          await fetch('/api/tools', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ...tool,
+              hidden: true
+            }),
+          });
+        }
       }
-    });
-    
-    setChanges(new Set())
-    setIsSaving(false)
-    
-    // Refresh the page data
-    window.location.reload()
+      
+      setChanges(new Set())
+      setRemovedTools(new Set())
+      
+      // Reload tools data
+      await loadTools()
+    } catch (error) {
+      console.error('Error saving changes:', error)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const removedCount = removedTools.size
@@ -115,9 +160,9 @@ export default function DirectoryManagementPage() {
             Add or remove tools from the main directory
           </p>
           <div className="flex items-center gap-6 text-sm muted-text-light">
-            <span>Total Tools: {tools.length}</span>
-            <span>Removed: {removedCount}</span>
-            <span>Changes: {changes.size}</span>
+            <Badge variant="secondary">Total Tools: {tools.length}</Badge>
+            <Badge variant="destructive">Removed: {removedCount}</Badge>
+            <Badge variant="outline">Changes: {changes.size}</Badge>
           </div>
         </motion.div>
 
@@ -128,19 +173,20 @@ export default function DirectoryManagementPage() {
         >
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
+            <Input
               type="text"
               placeholder="Search tools..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+              className="pl-10"
             />
           </div>
           
-          <button
+          <Button
             onClick={handleSaveChanges}
             disabled={changes.size === 0 || isSaving}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${changes.size > 0 && !isSaving ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+            variant={changes.size > 0 && !isSaving ? "default" : "secondary"}
+            className="flex items-center gap-2"
           >
             {isSaving ? (
               <>
@@ -153,64 +199,75 @@ export default function DirectoryManagementPage() {
                 <span>Save Changes ({changes.size})</span>
               </>
             )}
-          </button>
+          </Button>
         </motion.div>
 
         {/* Tools List */}
         <motion.div variants={itemVariants}>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="grid grid-cols-[auto_1fr_auto] gap-4 p-4 bg-gray-50 border-b border-gray-100 font-medium text-gray-600">
-              <div className="w-12"></div>
-              <div>Tool</div>
-              <div className="w-24 text-center">Actions</div>
-            </div>
-            
-            {filteredTools.length > 0 ? (
-              <div className="divide-y divide-gray-100">
-                {filteredTools.map((tool) => (
-                  <motion.div 
-                    key={tool.id}
-                    className="grid grid-cols-[auto_1fr_auto] gap-4 p-4 items-center hover:bg-gray-50 transition-colors"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-gray-100 flex items-center justify-center">
-                      <img 
-                        src={tool.logo} 
-                        alt={tool.name} 
-                        className="w-10 h-10 object-contain"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/images/placeholder.svg';
-                        }}
-                      />
-                    </div>
-                    
-                    <div>
-                      <h3 className="font-medium text-gray-900">{tool.name}</h3>
-                      <p className="text-sm text-gray-500 truncate">{tool.tagline}</p>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleRemoveTool(tool.id)}
-                        className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
-                        title="Remove from directory"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-8 text-center text-gray-500">
-                {searchTerm ? 'No tools match your search' : 'No tools available'}
-              </div>
-            )}
-          </div>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12"></TableHead>
+                  <TableHead>Tool</TableHead>
+                  <TableHead className="w-24 text-center">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTools.length > 0 ? (
+                  filteredTools.map((tool) => (
+                    <motion.tr 
+                      key={tool.id}
+                      className="hover:bg-gray-50 transition-colors"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <TableCell>
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-gray-100 flex items-center justify-center">
+                          <img 
+                            src={tool.logo} 
+                            alt={tool.name} 
+                            className="w-10 h-10 object-contain"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/images/placeholder.svg';
+                            }}
+                          />
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div>
+                          <h3 className="font-medium text-gray-900">{tool.name}</h3>
+                          <p className="text-sm text-gray-500 truncate">{tool.tagline}</p>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell className="text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveTool(tool.id)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          title="Remove from directory"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </Button>
+                      </TableCell>
+                    </motion.tr>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center py-8 text-gray-500">
+                      {searchTerm ? 'No tools match your search' : 'No tools available'}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Card>
         </motion.div>
 
         {/* Removed Tools */}
@@ -220,49 +277,57 @@ export default function DirectoryManagementPage() {
             variants={itemVariants}
           >
             <h2 className="text-xl font-semibold muted-text mb-4">Removed Tools</h2>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="divide-y divide-gray-100">
-                {tools
-                  .filter(tool => removedTools.has(tool.id))
-                  .map((tool) => (
-                    <motion.div 
-                      key={tool.id}
-                      className="grid grid-cols-[auto_1fr_auto] gap-4 p-4 items-center bg-gray-50 hover:bg-gray-100 transition-colors"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-gray-100 flex items-center justify-center">
-                        <img 
-                          src={tool.logo} 
-                          alt={tool.name} 
-                          className="w-10 h-10 object-contain"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = '/images/placeholder.svg';
-                          }}
-                        />
-                      </div>
-                      
-                      <div>
-                        <h3 className="font-medium text-gray-900">{tool.name}</h3>
-                        <p className="text-sm text-gray-500 truncate">{tool.tagline}</p>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleRestoreTool(tool.id)}
-                          className="p-2 rounded-lg text-green-500 hover:bg-green-50 transition-colors"
-                          title="Restore to directory"
-                        >
-                          <Plus className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </motion.div>
-                  ))}
-              </div>
-            </div>
+            <Card>
+              <Table>
+                <TableBody>
+                  {tools
+                    .filter(tool => removedTools.has(tool.id))
+                    .map((tool) => (
+                      <motion.tr 
+                        key={tool.id}
+                        className="bg-gray-50 hover:bg-gray-100 transition-colors"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <TableCell>
+                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-gray-100 flex items-center justify-center">
+                            <img 
+                              src={tool.logo} 
+                              alt={tool.name} 
+                              className="w-10 h-10 object-contain"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = '/images/placeholder.svg';
+                              }}
+                            />
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div>
+                            <h3 className="font-medium text-gray-900">{tool.name}</h3>
+                            <p className="text-sm text-gray-500 truncate">{tool.tagline}</p>
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRestoreTool(tool.id)}
+                            className="text-green-500 hover:text-green-700 hover:bg-green-50"
+                            title="Restore to directory"
+                          >
+                            <Plus className="w-5 h-5" />
+                          </Button>
+                        </TableCell>
+                      </motion.tr>
+                    ))}
+                </TableBody>
+              </Table>
+            </Card>
           </motion.div>
         )}
       </div>
