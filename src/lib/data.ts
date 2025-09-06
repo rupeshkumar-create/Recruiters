@@ -169,7 +169,7 @@ export const csvTools: Tool[] = [
     "url": "https://www.prismhr.com/",
     "tagline": "Leading platform for payroll, benefits, and HR for SMBs.",
     "content": "PrismHR provides powerful software and services that enable PEOs and ASOs to deliver top-tier payroll, benefits, and HR solutions to small and mid-sized businesses. Trusted by over 88,000 organizations and 2.2 million employees, PrismHR processes more than $57 billion in payroll annually. Our platform helps HR outsourcing providers boost productivity and profitability. Learn more at prismhr.com.",
-    "categories": "Payroll & Billing",
+    "categories": "Analytics",
     "logo": "/images/prismhr.jpg",
     "slug": "prismhr",
     "featured": false
@@ -477,7 +477,7 @@ export const csvTools: Tool[] = [
     "url": "managing every interaction",
     "tagline": "and driving more placements — all in one platform. SourceWhale’s modules automate outreach sequences",
     "content": "meeting summaries",
-    "categories": "inbox management",
+    "categories": "Inbox Management",
     "logo": "data validation",
     "slug": "CRM updates and more. It removes friction so recruiters keep momentum without getting bogged down by admin. The result is more time spent actively recruiting—engaging candidates",
     "featured": false
@@ -642,7 +642,7 @@ export const csvTools: Tool[] = [
     "url": "https://www.thematchbox.ai/",
     "tagline": "Search. Find. Match.",
     "content": "theMatchBox simplifies your HR processes by making candidate and vacancy matching easier than ever. With AI and NLP-driven solutions, it streamlines candidate sourcing from LinkedIn and VDAB, enriches profiles through the Profile Booster, and automates lead generation with tools like Jobdigger and the Virtual Sales Recruiter. Whether you're building your candidate database or matching job ads, theMatchBox helps staffing agencies and HR professionals save time while unlocking more opportunities.",
-    "categories": "Parsing & AI Matching",
+    "categories": "Sourcing & Search",
     "logo": "/images/thematchbox.jpg",
     "slug": "thematchbox",
     "featured": false
@@ -675,7 +675,7 @@ export const csvTools: Tool[] = [
     "url": "https://www.clearlyrated.com/",
     "tagline": "The CX Platform for Service Firms.",
     "content": "ClearlyRated is a leading CX platform tailored for B2B service firms, offering a sophisticated alternative to manual processes and basic survey tools. Our industry-focused solution provides real-time insights into client and employee satisfaction, helping teams anticipate and resolve service issues before they affect customers. With seamless CRM and ATS integrations, we automate the process for a hands-off, always-on view of customer and employee relationships. Our CX benchmarking and online reputation tools also provide tangible proof of a firm's commitment to high-quality service, differentiating them from competitors and strengthening client trust.",
-    "categories": "Experience & Reputation",
+    "categories": "Sales & Marketing",
     "logo": "/images/clearlyrated.jpg",
     "slug": "clearlyrated",
     "featured": false
@@ -1423,7 +1423,7 @@ export const csvTools: Tool[] = [
     "url": "https://ilabornetwork.com/#",
     "tagline": "Vendor Management System for Staffing Firms.",
     "content": "iLabor360 provides staffing firms with a structured process to manage their third-party vendors, driving more placements and reducing risk. By automating job order distribution and centralizing vendor management, iLabor helps recruiting teams fill more job orders that typically go unfilled. Trusted by top IT recruiting firms like APEX, KForce, and Randstad, iLabor360 optimizes vendor networks, improving candidate submittal speed, compliance, and performance reporting. Built for flexibility, iLabor is cloud-based, ATS-integrated, and offers an open API, streamlining processes, boosting recruiter performance, and enhancing profitability while reducing manual administration.",
-    "categories": "Vendor Management System (VMS)",
+    "categories": "ATS",
     "logo": "/images/ilabor360.jpg",
     "slug": "ilabor360",
     "featured": false
@@ -1577,7 +1577,7 @@ export const csvTools: Tool[] = [
     "url": "https://meetmaxim.com/",
     "tagline": "Your super assistant in recruitment.",
     "content": "I make recruitment simple, fast, and personal. My smart tools help you effortlessly connect and stay in touch with the right talent, elevating your hiring process to the next level. Whether it’s activating your database or crafting powerful job postings and profiles—I ensure you’re always one step ahead. 𝗥𝗲𝗰𝗿𝘂𝗶𝘁𝗺𝗲𝗻𝘁 𝘄𝗮𝘀 𝗻𝗲𝘃𝗲𝗿 𝘁𝗵𝗶𝘀 𝗽𝗼𝘄𝗲𝗿𝗳𝘂𝗹.",
-    "categories": "AI Agent",
+    "categories": "Automation",
     "logo": "/images/maxim.jpg",
     "slug": "maxim",
     "featured": false
