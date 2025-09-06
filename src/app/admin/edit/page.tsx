@@ -127,6 +127,8 @@ export default function EditToolsPage() {
          featured: false,
          hidden: false
        })
+        // Trigger refresh on main page
+        window.dispatchEvent(new CustomEvent('refreshTools'))
       } else {
         console.error('Failed to update tool')
       }
@@ -160,6 +162,8 @@ export default function EditToolsPage() {
       if (response.ok) {
         await refreshTools()
         setShowDeleteConfirm(null)
+        // Trigger refresh on main page
+        window.dispatchEvent(new CustomEvent('refreshTools'))
       } else {
         console.error('Failed to delete tool')
       }
@@ -182,6 +186,8 @@ export default function EditToolsPage() {
 
         if (response.ok) {
           await refreshTools()
+          // Trigger refresh on main page
+          window.dispatchEvent(new CustomEvent('refreshTools'))
         } else {
           console.error('Failed to update tool visibility')
         }

@@ -147,6 +147,29 @@ export default function HomePage() {
     }
     
     fetchTools()
+    
+    // Set up polling to refresh data every 30 seconds
+    const interval = setInterval(fetchTools, 30000)
+    
+    // Refresh data when window regains focus (user comes back from admin panel)
+    const handleFocus = () => {
+      fetchTools()
+    }
+    
+    // Listen for custom refresh events from admin panel
+    const handleRefreshTools = () => {
+      fetchTools()
+    }
+    
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('refreshTools', handleRefreshTools)
+    
+    // Cleanup
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('refreshTools', handleRefreshTools)
+    }
   }, [])
 
   const getSearchScore = (tool: any, searchTerm: string): number => {

@@ -88,6 +88,8 @@ export default function DirectoryManagementPage() {
         
         // Reload tools data
         await loadTools()
+        // Trigger refresh on main page
+        window.dispatchEvent(new CustomEvent('refreshTools'))
       }
     } catch (error) {
       console.error('Error restoring tool:', error)
@@ -122,6 +124,8 @@ export default function DirectoryManagementPage() {
       
       // Reload tools data
       await loadTools()
+      // Trigger refresh on main page
+      window.dispatchEvent(new CustomEvent('refreshTools'))
     } catch (error) {
       console.error('Error saving changes:', error)
     } finally {

@@ -117,6 +117,8 @@ export default function AddToolPage() {
           hidden: false
         })
         setErrors({})
+        // Trigger refresh on main page
+        window.dispatchEvent(new CustomEvent('refreshTools'))
       }
     } catch (error) {
       console.error('Error adding tool:', error)
