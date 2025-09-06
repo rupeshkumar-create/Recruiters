@@ -50,7 +50,7 @@ export default function FeaturedAdminPage() {
           : tool
       )
     )
-    setChanges(prev => new Set([...prev, toolId]))
+    setChanges(prev => new Set([...Array.from(prev), toolId]))
   }
 
   const handleSaveChanges = async () => {
