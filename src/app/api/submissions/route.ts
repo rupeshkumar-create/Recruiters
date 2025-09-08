@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendWebhookNotification } from '../../../lib/slack';
 
 // Use service role key for admin operations
 const supabase = createClient(
@@ -185,6 +186,27 @@ export async function POST(request: NextRequest) {
     } catch (emailError) {
       console.error('Error sending confirmation email:', emailError);
       // Don't fail the submission if email fails
+    }
+
+    // Send Slack notification
+    try {
+      const slackResult = await sendWebhookNotification({
+        firstName: first_name,
+        lastName: last_name,
+        url: url,
+        tagline: tagline,
+        description: description,
+        submitterEmail: email
+      });
+      
+      if (slackResult.success) {
+        console.log('Slack notification sent successfully');
+      } else {
+        console.error('Failed to send Slack notification:', slackResult.error);
+      }
+    } catch (slackError) {
+      console.error('Error sending Slack notification:', slackError);
+      // Don't fail the submission if Slack notification fails
     }
 
     return NextResponse.json(submission, { status: 201 });
