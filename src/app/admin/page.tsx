@@ -219,12 +219,12 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-              <Link href="/" className="text-orange-600 hover:text-orange-700 font-medium transition-colors">
+            <div className="flex items-center gap-8">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 bg-clip-text text-transparent">Admin Dashboard</h1>
+              <Link href="/" className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-slate-100 to-slate-50 hover:from-slate-200 hover:to-slate-100 text-slate-700 hover:text-slate-800 rounded-xl font-medium transition-all duration-300 border border-slate-200/50 hover:border-slate-300/50 shadow-sm hover:shadow-md">
                 ← Back to Home
               </Link>
             </div>
@@ -233,7 +233,7 @@ export default function AdminPage() {
                 setIsAuthenticated(false)
                 localStorage.removeItem('admin_authenticated')
               }}
-              className="text-gray-600 hover:text-gray-900 transition-colors"
+              className="px-5 py-2.5 text-slate-600 hover:text-slate-800 bg-gradient-to-r from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 rounded-xl transition-all duration-300 border border-red-200/50 hover:border-red-300/50 font-medium shadow-sm hover:shadow-md"
             >
               Logout
             </button>
@@ -241,16 +241,16 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="min-h-screen bg-gray-50/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-                <p className="text-gray-600">Manage tool submissions and directory content</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-sm text-gray-500">
+      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="mb-12">
+            <div className="text-center mb-8">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 bg-clip-text text-transparent mb-4">Welcome to Admin Dashboard</h1>
+              <p className="text-xl text-slate-600 max-w-2xl mx-auto">Manage tool submissions, directory content, and featured tools with ease</p>
+            </div>
+            <div className="flex items-center justify-center">
+              <div className="px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full shadow-sm border border-slate-200/50">
+                <div className="text-sm text-slate-500 font-medium">
                   Last updated: {new Date().toLocaleTimeString()}
                 </div>
               </div>
@@ -258,90 +258,66 @@ export default function AdminPage() {
           </div>
           
           {/* Navigation Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
-          <Card>
-            <CardHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <Card className="h-48 hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white via-orange-50/30 to-orange-100/20 hover:from-orange-50/50 hover:to-orange-100/30">
+            <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
-                <Settings className="w-6 h-6 text-[#F26B21]" />
-                <CardTitle className="text-lg">Submissions</CardTitle>
+                <div className="p-3 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl shadow-sm">
+                  <Settings className="w-5 h-5 text-white" />
+                </div>
+                <CardTitle className="text-lg font-bold text-slate-800">Submissions</CardTitle>
               </div>
             </CardHeader>
-            <CardContent>
-              <CardDescription className="mb-4">Review and approve new tool submissions</CardDescription>
-              <div className="text-2xl font-bold text-[#F26B21] mb-2">{submissions.filter(s => s.status === 'pending').length}</div>
-              <Badge variant="secondary">Pending submissions</Badge>
+            <CardContent className="pt-0">
+              <CardDescription className="mb-4 text-sm text-slate-600">Review and approve new tool submissions</CardDescription>
+              <div className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-2">{submissions.filter(s => s.status === 'pending').length}</div>
+              <Badge variant="secondary" className="bg-orange-100/80 text-orange-800 border-orange-300/50 font-medium">Pending submissions</Badge>
             </CardContent>
           </Card>
           
-          <Link href="/admin/featured">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <Star className="w-6 h-6 text-[#F26B21]" />
-                  <CardTitle className="text-lg">Featured Tools</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="mb-4">Manage which tools appear in the featured section</CardDescription>
-                <div className="text-sm text-[#F26B21] font-medium">Manage Featured →</div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/admin/directory">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <FolderPlus className="w-6 h-6 text-[#F26B21]" />
-                  <CardTitle className="text-lg">Directory</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="mb-4">Add or remove tools from the main directory</CardDescription>
-                <div className="text-sm text-[#F26B21] font-medium">Manage Directory →</div>
-              </CardContent>
-            </Card>
-          </Link>
-          
           <Link href="/admin/edit">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader>
+            <Card className="h-48 hover:shadow-xl transition-all duration-300 cursor-pointer border-0 bg-gradient-to-br from-white via-green-50/30 to-emerald-100/20 hover:from-green-50/50 hover:to-emerald-100/30 group">
+              <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
-                  <Edit3 className="w-6 h-6 text-[#F26B21]" />
-                  <CardTitle className="text-lg">Edit Tools</CardTitle>
+                  <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl shadow-sm group-hover:from-green-600 group-hover:to-emerald-600 transition-all">
+                    <Edit3 className="w-5 h-5 text-white" />
+                  </div>
+                  <CardTitle className="text-lg font-bold text-slate-800">Edit Tools</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent>
-                <CardDescription className="mb-4">Edit tool logos and descriptions</CardDescription>
-                <div className="text-sm text-[#F26B21] font-medium">Edit Tools →</div>
+              <CardContent className="pt-0 flex flex-col justify-between h-full">
+                <CardDescription className="mb-4 text-sm text-slate-600">Edit, feature, and manage all tools with advanced options</CardDescription>
+                <div className="text-sm bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent font-bold group-hover:from-green-700 group-hover:to-emerald-700 transition-all">Manage Tools →</div>
               </CardContent>
             </Card>
           </Link>
           
           <Link href="/admin/add">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader>
+            <Card className="h-48 hover:shadow-xl transition-all duration-300 cursor-pointer border-0 bg-gradient-to-br from-white via-purple-50/30 to-violet-100/20 hover:from-purple-50/50 hover:to-violet-100/30 group">
+              <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
-                  <Plus className="w-6 h-6 text-[#F26B21]" />
-                  <CardTitle className="text-lg">Add Tool</CardTitle>
+                  <div className="p-3 bg-gradient-to-br from-purple-500 to-violet-500 rounded-xl shadow-sm group-hover:from-purple-600 group-hover:to-violet-600 transition-all">
+                    <Plus className="w-5 h-5 text-white" />
+                  </div>
+                  <CardTitle className="text-lg font-bold text-slate-800">Add Tool</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent>
-                <CardDescription className="mb-4">Add new tools to the directory</CardDescription>
-                <div className="text-sm text-[#F26B21] font-medium">Add Tool →</div>
+              <CardContent className="pt-0 flex flex-col justify-between h-full">
+                <CardDescription className="mb-4 text-sm text-slate-600">Add new tools to the directory</CardDescription>
+                <div className="text-sm bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent font-bold group-hover:from-purple-700 group-hover:to-violet-700 transition-all">Add Tool →</div>
               </CardContent>
             </Card>
           </Link>
           </div>
 
-          <Card className="border-0 shadow-sm bg-white">
-            <CardHeader className="pb-4 border-b border-gray-100">
+          <Card className="border-0 shadow-xl bg-white/95 backdrop-blur-sm rounded-3xl overflow-hidden">
+            <CardHeader className="pb-6 bg-gradient-to-r from-slate-50/80 via-blue-50/50 to-indigo-50/30 border-b border-slate-200/50">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl font-semibold text-gray-900">Pending Submissions</CardTitle>
-                  <CardDescription className="mt-1 text-gray-600">Review and approve new tool submissions</CardDescription>
+                  <CardTitle className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-900 bg-clip-text text-transparent">Pending Submissions</CardTitle>
+                  <CardDescription className="mt-2 text-slate-600">Review and approve new tool submissions</CardDescription>
                 </div>
-                <Button onClick={loadSubmissions} variant="outline" size="sm" className="shrink-0 border-gray-200 hover:bg-gray-50">
+                <Button onClick={loadSubmissions} variant="outline" size="sm" className="shrink-0 border-slate-300 hover:bg-slate-50 hover:border-slate-400 rounded-xl font-medium transition-all duration-200">
                   Refresh Submissions
                 </Button>
               </div>
@@ -363,44 +339,44 @@ export default function AdminPage() {
                   </div>
                 </div>
                 
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {submissions.map((submission) => (
-                    <div key={submission.id} className="border rounded-lg p-4 hover:bg-gray-50/50 transition-colors">
-                      <div className="flex items-start justify-between gap-4">
+                    <div key={submission.id} className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-md transition-all duration-300 hover:border-gray-200">
+                      <div className="flex items-start justify-between gap-6">
                         <div className="flex items-start gap-4 flex-1 min-w-0">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-semibold text-lg shrink-0">
+                          <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-sm">
                             {submission.name ? submission.name.charAt(0).toUpperCase() : '?'}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold text-gray-900 truncate">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-lg font-bold text-gray-900 truncate">
                                 {submission.name || 'Untitled Tool'}
                               </h3>
                               <Badge 
                                 variant={submission.status === 'pending' ? 'secondary' : 'default'}
-                                className={submission.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
+                                className={submission.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : ''}
                               >
                                 {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
                               </Badge>
                             </div>
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                            <p className="text-gray-600 mb-4 line-clamp-2">
                               {submission.description || 'No description provided'}
                             </p>
-                            <div className="flex items-center gap-4 text-sm text-gray-500">
-                              <span className="flex items-center gap-1">
-                                🌐 <span className="truncate max-w-[200px]">{submission.website}</span>
+                            <div className="flex items-center gap-6 text-sm text-gray-500">
+                              <span className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-full">
+                                🌐 <span className="truncate max-w-[200px] font-medium">{submission.website}</span>
                               </span>
-                              <span className="flex items-center gap-1">
-                                📁 {submission.category}
+                              <span className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-full">
+                                📁 <span className="font-medium">{submission.category}</span>
                               </span>
-                              <span className="flex items-center gap-1">
-                                📅 {formatDate(submission.submittedAt)}
+                              <span className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-full">
+                                📅 <span className="font-medium">{formatDate(submission.submittedAt)}</span>
                               </span>
                             </div>
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-3 shrink-0">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -413,24 +389,24 @@ export default function AdminPage() {
                           {submission.status === 'pending' && (
                             <>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 onClick={() => handleApprove(submission.id)}
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                className="text-green-700 border-green-300 hover:bg-green-50 hover:border-green-400 transition-all duration-200 rounded-xl px-4 py-2 font-medium"
                                 title="Approve"
                                 disabled={isLoading}
                               >
-                                <Check className="w-4 h-4" />
+                                ✓ Approve
                               </Button>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 onClick={() => handleReject(submission.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                className="text-red-700 border-red-300 hover:bg-red-50 hover:border-red-400 transition-all duration-200 rounded-xl px-4 py-2 font-medium"
                                 title="Reject"
                                 disabled={isLoading}
                               >
-                                <X className="w-4 h-4" />
+                                ✗ Reject
                               </Button>
                             </>
                           )}

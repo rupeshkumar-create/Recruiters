@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Star, StarOff, Settings, Save, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import { mockTools, toggleFeaturedStatus } from '../../../lib/data'
 import type { Tool } from '../../../lib/data'
+import ToolImage from '../../../components/ToolImage'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -148,26 +148,12 @@ export default function FeaturedAdminPage() {
               }`}
             >
               <div className="flex items-start gap-4 mb-4">
-                <div className="w-12 h-12 flex-shrink-0">
-                  <img 
-                    src={tool.logo.includes('linkedin.com') ? `https://images.weserv.nl/?url=${encodeURIComponent(tool.logo)}&w=48&h=48&fit=contain&bg=white` : tool.logo}
-                    alt={`${tool.name} logo`}
-                    className="w-full h-full object-contain rounded-lg bg-gray-50"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      if (target.src.includes('weserv.nl')) {
-                        target.src = tool.logo;
-                        return;
-                      }
-                      target.style.display = 'none';
-                      const fallback = target.nextElementSibling as HTMLElement;
-                      if (fallback) fallback.style.display = 'flex';
-                    }}
-                  />
-                  <div className="w-full h-full bg-[#F26B21] rounded-lg items-center justify-center text-white font-bold text-sm hidden">
-                    {tool.name.charAt(0).toUpperCase()}
-                  </div>
-                </div>
+                <ToolImage 
+                  src={tool.logo}
+                  alt={`${tool.name} logo`}
+                  name={tool.name}
+                  size="md"
+                />
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">
                     {tool.name}

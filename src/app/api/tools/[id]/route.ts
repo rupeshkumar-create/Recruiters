@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '../../../../lib/supabase'
+import { getServiceSupabase } from '../../../../lib/supabase'
+
+const supabase = getServiceSupabase()
 
 // PUT /api/tools/[id] - Update a tool
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {

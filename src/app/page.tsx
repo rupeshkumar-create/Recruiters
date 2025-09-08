@@ -9,6 +9,7 @@ import SubmissionForm from '../components/SubmissionForm'
 import EmailSubscription from '../components/EmailSubscription'
 import FeaturedTag from '../components/FeaturedTag'
 import TypingIcon from '../components/TypingIcon'
+import ToolImage from '../components/ToolImage'
 import { csvTools } from '../lib/data'
 
 
@@ -137,12 +138,12 @@ export default function HomePage() {
         } else {
           console.error('Failed to fetch tools from API, using CSV fallback')
           // Keep csvTools as fallback when API fails
-          setTools(csvTools)
+          setTools(getSampleTools())
         }
       } catch (error) {
         console.error('Error fetching tools:', error, 'using CSV fallback')
         // Keep csvTools as fallback when API fails
-        setTools(csvTools)
+        setTools(getSampleTools())
       }
     }
     
@@ -172,39 +173,121 @@ export default function HomePage() {
     }
   }, [])
 
-  const getSearchScore = (tool: any, searchTerm: string): number => {
-    const searchWords = searchTerm.toLowerCase().split(' ').filter(word => word.length > 0)
-    let score = 0
+  // Sample tools fallback
+  const getSampleTools = () => [
+    {
+      id: '1',
+      name: 'ChatGPT',
+      logo: 'https://cdn.openai.com/API/logo-openai.svg',
+      tagline: 'AI-powered conversational assistant',
+      description: 'Advanced AI chatbot for various tasks',
+      content: 'ChatGPT is an advanced AI language model that can help with writing, coding, analysis, and creative tasks.',
+      categories: 'AI, Productivity',
+      url: 'https://chat.openai.com',
+      slug: 'chatgpt',
+      featured: true,
+      hidden: false,
+      approved: true
+    },
+    {
+      id: '2',
+      name: 'Midjourney',
+      logo: 'https://cdn.midjourney.com/b07c0c9c-47a5-4c0a-9c0a-7c5c5c5c5c5c/0_0.png',
+      tagline: 'AI image generation',
+      description: 'Create stunning images with AI',
+      content: 'Midjourney is an AI service that generates images from textual descriptions.',
+      categories: 'AI, Design',
+      url: 'https://midjourney.com',
+      slug: 'midjourney',
+      featured: false,
+      hidden: false,
+      approved: true
+    },
+    {
+      id: '3',
+      name: 'Notion AI',
+      logo: 'https://www.notion.so/images/logo-ios.png',
+      tagline: 'AI-powered workspace',
+      description: 'Smart note-taking and project management',
+      content: 'Notion AI helps you write, brainstorm, edit, summarize and more.',
+      categories: 'AI, Productivity',
+      url: 'https://notion.so',
+      slug: 'notion-ai',
+      featured: true,
+      hidden: false,
+      approved: true
+    },
+    {
+      id: '4',
+      name: 'GitHub Copilot',
+      logo: 'https://github.githubassets.com/images/modules/site/copilot/copilot.png',
+      tagline: 'AI pair programmer',
+      description: 'AI-powered code completion and suggestions',
+      content: 'GitHub Copilot uses AI to suggest code and entire functions in real-time.',
+      categories: 'AI, Development',
+      url: 'https://github.com/features/copilot',
+      slug: 'github-copilot',
+      featured: true,
+      hidden: false,
+      approved: true
+    }
+  ]
+
+  const getSearchScore = useMemo(() => {
+    // Cache lowercase versions of tool data for better performance
+    const toolCache = new Map()
     
-    searchWords.forEach(word => {
-      const toolName = tool.name.toLowerCase()
-      const toolTagline = tool.tagline.toLowerCase()
-      const toolContent = tool.content.toLowerCase()
-      const toolCategories = tool.categories.toLowerCase()
+    return (tool: any, searchTerm: string): number => {
+      const toolId = tool.id || tool.name
       
-      // Exact title match gets highest priority (score: 1000)
-      if (toolName === word || toolName.includes(word)) {
-        score += toolName === word ? 1000 : 500
+      if (!toolCache.has(toolId)) {
+        toolCache.set(toolId, {
+          name: tool.name.toLowerCase(),
+          tagline: tool.tagline.toLowerCase(),
+          content: tool.content.toLowerCase(),
+          categories: tool.categories.toLowerCase()
+        })
       }
-      // Description/tagline match gets medium priority (score: 100)
-      else if (toolTagline.includes(word) || toolContent.includes(word)) {
-        score += 100
-      }
-      // Category/tag match gets lowest priority (score: 10)
-      else if (toolCategories.includes(word)) {
-        score += 10
-      }
-    })
-    
-    return score
-  }
+      
+      const cached = toolCache.get(toolId)
+      const searchWords = searchTerm.toLowerCase().split(' ').filter(word => word.length > 0)
+      let score = 0
+      
+      searchWords.forEach(word => {
+        // Exact title match gets highest priority (score: 1000)
+        if (cached.name === word || cached.name.includes(word)) {
+          score += cached.name === word ? 1000 : 500
+        }
+        // Description/tagline match gets medium priority (score: 100)
+        else if (cached.tagline.includes(word) || cached.content.includes(word)) {
+          score += 100
+        }
+        // Category/tag match gets lowest priority (score: 10)
+        else if (cached.categories.includes(word)) {
+          score += 10
+        }
+      })
+      
+      return score
+    }
+  }, [])
 
   // Generate categories from current tools to prevent hydration mismatch
   const categories = useMemo(() => {
-    const uniqueCategories = Array.from(
-      new Set(tools.map(tool => tool.categories).filter(Boolean))
-    ).sort()
-    return ['All', ...uniqueCategories]
+    if (tools.length === 0) return ['All']
+    
+    const categorySet = new Set<string>()
+    tools.forEach(tool => {
+      if (tool.categories) {
+        // Split categories by comma and add each one
+        tool.categories.split(',').forEach((cat: string) => {
+          const trimmed = cat.trim()
+          if (trimmed) categorySet.add(trimmed)
+        })
+      }
+    })
+    
+    return ['All', ...Array.from(categorySet).sort()]
   }, [tools])
 
   // Helper function to get tools by category
@@ -218,16 +301,19 @@ export default function HomePage() {
   }
 
   const filteredTools = useMemo(() => {
-    let filteredTools = selectedCategory === 'All' ? tools : getToolsByCategory(selectedCategory)
+    // First filter out hidden tools
+    const visibleTools = tools.filter(tool => !tool.hidden)
     
-    // Filter out hidden tools from public view
-    filteredTools = filteredTools.filter(tool => !tool.hidden)
+    // Then filter by category
+    let categoryFiltered = selectedCategory === 'All' 
+      ? visibleTools 
+      : visibleTools.filter(tool => 
+          tool.categories && tool.categories.toLowerCase().includes(selectedCategory.toLowerCase())
+        )
     
-    if (searchTerm) {
-      const searchWords = searchTerm.toLowerCase().split(' ').filter(word => word.length > 0)
-      
-      // Filter and score tools
-      const scoredTools = filteredTools
+    // Finally apply search if needed
+    if (searchTerm && searchTerm.length > 1) {
+      const scoredTools = categoryFiltered
         .map(tool => ({
           ...tool,
           searchScore: getSearchScore(tool, searchTerm)
@@ -238,8 +324,8 @@ export default function HomePage() {
       return scoredTools
     }
     
-    return filteredTools
-  }, [selectedCategory, searchTerm, tools])
+    return categoryFiltered
+  }, [selectedCategory, searchTerm, tools, getSearchScore])
 
   const featuredTools = tools.filter(tool => tool.featured && !tool.hidden)
 
@@ -513,28 +599,15 @@ export default function HomePage() {
                     <div className="relative z-10 flex flex-col h-full">
                       <div className="flex items-center justify-center mb-4 mt-2">
                         <motion.div 
-                          className="w-16 h-16 bg-gray-50 rounded-xl p-3 flex-shrink-0"
                           variants={logoVariants}
                           whileHover="hover"
                         >
-                          <img 
-                            src={tool.logo.includes('linkedin.com') ? `https://images.weserv.nl/?url=${encodeURIComponent(tool.logo)}&w=64&h=64&fit=contain&bg=white` : tool.logo}
+                          <ToolImage 
+                            src={tool.logo}
                             alt={`${tool.name} logo`}
-                            className="w-full h-full object-contain rounded-lg"
-                            onError={(e) => {
-                              const target = e.currentTarget;
-                              if (target.src.includes('weserv.nl')) {
-                                target.src = tool.logo;
-                                return;
-                              }
-                              target.style.display = 'none';
-                              const fallback = target.nextElementSibling as HTMLElement;
-                              if (fallback) fallback.style.display = 'flex';
-                            }}
+                            name={tool.name}
+                            size="lg"
                           />
-                          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-xl hidden">
-                            {tool.name.charAt(0).toUpperCase()}
-                          </div>
                         </motion.div>
                       </div>
                       <div className="flex-grow flex flex-col justify-between">
@@ -570,26 +643,12 @@ export default function HomePage() {
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-50/20 to-neutral-50/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <div className="relative z-10">
                       <div className="flex items-start gap-5 mb-6 mt-2">
-                        <div className="w-14 h-14 flex-shrink-0 bg-gray-50 rounded-2xl p-3">
-                          <img 
-                            src={tool.logo.includes('linkedin.com') ? `https://images.weserv.nl/?url=${encodeURIComponent(tool.logo)}&w=48&h=48&fit=contain&bg=white` : tool.logo}
-                            alt={`${tool.name} logo`}
-                            className="w-full h-full object-contain rounded-lg"
-                            onError={(e) => {
-                              const target = e.currentTarget;
-                              if (target.src.includes('weserv.nl')) {
-                                target.src = tool.logo;
-                                return;
-                              }
-                              target.style.display = 'none';
-                              const fallback = target.nextElementSibling as HTMLElement;
-                              if (fallback) fallback.style.display = 'flex';
-                            }}
-                          />
-                          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg items-center justify-center text-white font-bold text-sm hidden">
-                            {tool.name.charAt(0).toUpperCase()}
-                          </div>
-                        </div>
+                        <ToolImage 
+                          src={tool.logo}
+                          alt={`${tool.name} logo`}
+                          name={tool.name}
+                          size="md"
+                        />
                         <div className="flex-1 min-w-0">
                           <h3 className="text-xl font-bold muted-text mb-2 group-hover:orange-accent transition-colors">
                             {tool.name}
