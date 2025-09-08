@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { Search, ExternalLink, Plus, Sparkles, Zap, ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
 import Link from 'next/link'
@@ -233,44 +233,35 @@ export default function HomePage() {
     }
   ]
 
-  const getSearchScore = useMemo(() => {
-    // Cache lowercase versions of tool data for better performance
-    const toolCache = new Map()
+  const getSearchScore = useCallback((tool: any, searchTerm: string): number => {
+    if (!searchTerm) return 0;
+    const term = searchTerm.toLowerCase();
     
-    return (tool: any, searchTerm: string): number => {
-      const toolId = tool.id || tool.name
-      
-      if (!toolCache.has(toolId)) {
-        toolCache.set(toolId, {
-          name: tool.name ? tool.name.toLowerCase() : '',
-          tagline: tool.tagline ? tool.tagline.toLowerCase() : '',
-          content: tool.content ? tool.content.toLowerCase() : '',
-          categories: tool.categories ? tool.categories.toLowerCase() : ''
-        })
-      }
-      
-      const cached = toolCache.get(toolId)
-      const searchWords = searchTerm.toLowerCase().split(' ').filter(word => word.length > 0)
-      let score = 0
-      
-      searchWords.forEach(word => {
-        // Exact title match gets highest priority (score: 1000)
-        if (cached.name === word || cached.name.includes(word)) {
-          score += cached.name === word ? 1000 : 500
-        }
-        // Description/tagline match gets medium priority (score: 100)
-        else if (cached.tagline.includes(word) || cached.content.includes(word)) {
-          score += 100
-        }
-        // Category/tag match gets lowest priority (score: 10)
-        else if (cached.categories.includes(word)) {
-          score += 10
-        }
-      })
-      
-      return score
+    // Prioritize matches in name, tagline, content, and categories
+    let score = 0;
+    
+    // Name match (highest priority)
+    if (tool.name && tool.name.toLowerCase().includes(term)) {
+      score += 100;
     }
-  }, [])
+    
+    // Tagline match (high priority)
+    if (tool.tagline && tool.tagline.toLowerCase().includes(term)) {
+      score += 50;
+    }
+    
+    // Content match (medium priority)
+    if (tool.content && tool.content.toLowerCase().includes(term)) {
+      score += 25;
+    }
+    
+    // Categories match (lower priority)
+    if (tool.categories && tool.categories.toLowerCase().includes(term)) {
+      score += 15;
+    }
+    
+    return score;
+  }, []);
 
   // Generate categories from current tools to prevent hydration mismatch
   const categories = useMemo(() => {
