@@ -242,10 +242,10 @@ export default function HomePage() {
       
       if (!toolCache.has(toolId)) {
         toolCache.set(toolId, {
-          name: tool.name.toLowerCase(),
-          tagline: tool.tagline.toLowerCase(),
-          content: tool.content.toLowerCase(),
-          categories: tool.categories.toLowerCase()
+          name: tool.name ? tool.name.toLowerCase() : '',
+          tagline: tool.tagline ? tool.tagline.toLowerCase() : '',
+          content: tool.content ? tool.content.toLowerCase() : '',
+          categories: tool.categories ? tool.categories.toLowerCase() : ''
         })
       }
       
@@ -296,7 +296,7 @@ export default function HomePage() {
       return tools
     }
     return tools.filter(tool => 
-      tool.categories.toLowerCase().includes(category.toLowerCase())
+      tool.categories && tool.categories.toLowerCase().includes(category.toLowerCase())
     )
   }
 
@@ -562,24 +562,36 @@ export default function HomePage() {
           className="flex flex-wrap justify-center gap-3 mb-16"
           variants={itemVariants}
         >
-          {categories.map((category, index) => (
-            <motion.button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-300 shadow-sm hover:shadow-md ${
-                selectedCategory === category
-                  ? 'orange-bg text-white scale-105'
-                  : 'muted-card muted-text-light hover:bg-neutral-50 border border-neutral-300 hover:border-orange-400'
-              }`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 + index * 0.1, duration: 0.4 }}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {category}
-            </motion.button>
-          ))}
+          {categories.map((category, index) => {
+            // Format category name with proper case
+            const formattedCategory = category === 'All' ? 'All' : 
+              category.split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+                
+            return (
+              <motion.button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-300 shadow-sm hover:shadow-md ${
+                  selectedCategory === category
+                    ? 'orange-bg text-white scale-105'
+                    : 'muted-card muted-text-light hover:bg-neutral-50 border border-neutral-300 hover:border-orange-400'
+                }`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  delay: Math.min(0.7 + index * 0.05, 1.2), // Cap the delay at 1.2s for faster loading
+                  duration: 0.3 // Reduce duration for faster animation
+                }}
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {formattedCategory}
+              </motion.button>
+            );
+          })}
+          {/* Remove the extra closing parentheses */}
         </motion.div>
 
       {/* Featured Tools Section */}
@@ -638,7 +650,7 @@ export default function HomePage() {
             {filteredTools.map((tool, index) => (
               <ScrollAnimatedCard key={tool.id} index={index}>
                 <Link href={`/tool/${tool.slug}`}>
-                  <div className="muted-card rounded-2xl shadow-sm p-8 hover:shadow-md transition-all duration-300 group h-full flex flex-col relative overflow-hidden card-hover">
+                  <div className="muted-card rounded-2xl shadow-sm p-8 hover:shadow-md transition-all duration-300 group h-[320px] flex flex-col relative overflow-hidden card-hover">
                     {tool.featured && <FeaturedTag size="sm" className="z-20" />}
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-50/20 to-neutral-50/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <div className="relative z-10">
@@ -658,10 +670,10 @@ export default function HomePage() {
                           </span>
                         </div>
                       </div>
-                      <p className="muted-text-light text-sm leading-relaxed mb-4 flex-grow">
+                      <p className="muted-text-light text-sm leading-relaxed mb-4 flex-grow min-h-[80px]">
                         {tool.tagline}
                       </p>
-                      <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+                      <div className="flex items-center justify-between pt-4 border-t border-neutral-100 mt-auto">
                         <button className="flex items-center gap-2 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-md transition-colors">
                           <ExternalLink className="w-3 h-3" />
                           <span>Visit Website</span>

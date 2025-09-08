@@ -40,12 +40,38 @@ A premium, curated directory application for AI-powered staffing and recruitment
    npm install
    ```
 
-2. Start the development server:
+2. Set up environment variables:
+   - Copy `.env.example` to a new file named `.env`
+   - Fill in your own values for all required environment variables
+   - **IMPORTANT**: Never commit your `.env` file to version control
+
+3. Start the development server:
    ```bash
    npm run dev
    ```
 
-3. Open [http://localhost:3000](http://localhost:3000) in your browser
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Environment Variables and Security
+
+### Security Best Practices
+
+- **Never commit secrets or API keys to your repository**
+- Always use `.env.example` as a template with placeholder values
+- The `.gitignore` file is configured to exclude all `.env` files
+- For production deployments, use environment secrets in your CI/CD platform
+
+### Required Environment Variables
+
+- **Supabase Configuration**
+  - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+  - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
+
+- **Email Service**
+  - `LOOPS_API_KEY`: API key for email notifications
+
+
 
 ## Usage
 

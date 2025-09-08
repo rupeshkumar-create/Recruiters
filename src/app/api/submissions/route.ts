@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { ToolSubmission } from '../../../types/submissions';
 
 // Use service role key for admin operations
 const supabase = createClient(
@@ -86,6 +87,18 @@ export async function POST(request: NextRequest) {
 
     // Generate slug
     const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+    // Prepare submission data
+    const submissionData: ToolSubmission = {
+      name,
+      url,
+      tagline,
+      description: description || '',
+      first_name,
+      last_name,
+      email,
+      submitter_email: email
+    };
 
     // Insert the submission
     const { data: submission, error: submissionError } = await supabase
