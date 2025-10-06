@@ -4,14 +4,29 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ArrowLeft, ExternalLink, Tag, Star, TrendingUp, Clock, Target, Users, Calendar, MapPin, ChevronUp, MessageCircle, Share2, Copy, Heart, ThumbsUp, Linkedin, X } from 'lucide-react'
-import { getToolBySlug, getFeaturedTools, getSimilarTools } from '../../../lib/data'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import VotingSection from '../../../components/VotingSection'
 import CommentSection from '../../../components/CommentSection'
 import FeaturedTag from '../../../components/FeaturedTag'
-import Image from 'next/image'
+import ToolImage from '../../../components/ToolImage'
+import UserAuthForm, { UserData } from '../../../components/UserAuthForm'
 import { useState, useEffect } from 'react'
+
+interface Tool {
+  id: string;
+  name: string;
+  url: string;
+  tagline: string;
+  content: string;
+  description?: string;
+  categories: string;
+  logo: string;
+  slug: string;
+  featured: boolean;
+  hidden?: boolean;
+  approved?: boolean;
+}
 
 interface ToolPageProps {
   params: {
@@ -57,77 +72,158 @@ const buttonHoverVariants = {
 }
 
 export default function ToolPage({ params }: ToolPageProps) {
-  const tool = getToolBySlug(String(params.slug))
+  const [tool, setTool] = useState<Tool | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [featuredTools, setFeaturedTools] = useState<Tool[]>([])
+  const [similarTools, setSimilarTools] = useState<Tool[]>([])
   const [votes, setVotes] = useState(0)
   const [hasVoted, setHasVoted] = useState(false)
   const [copied, setCopied] = useState(false)
   const [shares, setShares] = useState(0)
   const [votingCounts, setVotingCounts] = useState({ upvotes: 0, downvotes: 0 })
   const [commentCount, setCommentCount] = useState(0)
+  const [showAuthForm, setShowAuthForm] = useState(false)
+
+  // Fetch tool data from API
+  useEffect(() => {
+    const fetchTool = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/tools/${params.slug}`)
+        
+        if (response.status === 404) {
+          notFound()
+          return
+        }
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch tool')
+        }
+        
+        const toolData = await response.json()
+        setTool(toolData)
+        
+        // Fetch featured tools
+        const featuredResponse = await fetch('/api/tools?featured=true')
+        if (featuredResponse.ok) {
+          const featured = await featuredResponse.json()
+          setFeaturedTools(featured.filter((t: Tool) => t.id !== toolData.id).slice(0, 5))
+        }
+        
+        // Fetch similar tools (same category)
+        if (toolData.categories) {
+          const firstCategory = toolData.categories.split(',')[0].trim()
+          const similarResponse = await fetch(`/api/tools?category=${encodeURIComponent(firstCategory)}`)
+          if (similarResponse.ok) {
+            const similar = await similarResponse.json()
+            setSimilarTools(similar.filter((t: Tool) => t.id !== toolData.id).slice(0, 3))
+          }
+        }
+        
+      } catch (error) {
+        console.error('Error fetching tool:', error)
+        notFound()
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchTool()
+  }, [params.slug])
 
   useEffect(() => {
     if (!tool?.id) return
     
-    // Load from globalVotes system to sync with VotingSection
-    const globalVotes = JSON.parse(localStorage.getItem('globalVotes') || '{}')
-    const toolVotes = globalVotes[tool.id] || { upvotes: 0, downvotes: 0 }
-    const userVoted = localStorage.getItem(`user-voted-${tool.id}`)
-    const savedShares = localStorage.getItem(`tool-shares-${tool.id}`)
+    const loadVotesAndComments = async () => {
+      try {
+        // Load votes from API
+        const votesResponse = await fetch(`/api/votes?toolId=${tool.id}`)
+        if (votesResponse.ok) {
+          const votesData = await votesResponse.json()
+          setVotingCounts({ upvotes: votesData.upvotes, downvotes: votesData.downvotes })
+          setVotes(votesData.upvotes + votesData.downvotes)
+          
+          // Check if current user has voted
+          const userData = JSON.parse(localStorage.getItem('userSession') || 'null')
+          if (userData?.email) {
+            const userVote = votesData.votes.find((vote: any) => vote.user_email === userData.email)
+            setHasVoted(!!userVote && userVote.vote_type === 'up')
+          }
+        }
+        
+        // Load comments from localStorage (until we have comments API)
+        const commentData = JSON.parse(localStorage.getItem(`comments_${tool.id}`) || '[]')
+        setCommentCount(commentData.length)
+        
+        // Load shares from localStorage
+        const savedShares = localStorage.getItem(`tool-shares-${tool.id}`)
+        if (savedShares) setShares(parseInt(savedShares))
+        
+      } catch (error) {
+        console.error('Error loading votes and comments:', error)
+      }
+    }
     
-    // Load CommentSection data
-    const commentData = JSON.parse(localStorage.getItem(`comments_${tool.id}`) || '[]')
-    
-    // Set total votes as sum of upvotes and downvotes
-    setVotes(toolVotes.upvotes + toolVotes.downvotes)
-    if (userVoted) setHasVoted(true)
-    if (savedShares) setShares(parseInt(savedShares))
-    
-    setVotingCounts(toolVotes)
-    setCommentCount(commentData.length)
+    loadVotesAndComments()
     
     // Set up polling to check for updates
-    const interval = setInterval(() => {
-      const updatedGlobalVotes = JSON.parse(localStorage.getItem('globalVotes') || '{}')
-      const updatedToolVotes = updatedGlobalVotes[tool.id] || { upvotes: 0, downvotes: 0 }
-      const updatedComments = JSON.parse(localStorage.getItem(`comments_${tool.id}`) || '[]')
-      
-      // Update hero section votes from globalVotes
-      setVotes(updatedToolVotes.upvotes + updatedToolVotes.downvotes)
-      setVotingCounts(updatedToolVotes)
-      setCommentCount(updatedComments.length)
-    }, 1000)
+    const interval = setInterval(loadVotesAndComments, 5000)
     
     return () => clearInterval(interval)
   }, [tool?.id])
 
-  const handleVote = () => {
+  const handleVote = async () => {
     if (!tool?.id) return
     
+    // Import user session hook functionality
+    const userData = JSON.parse(localStorage.getItem('userSession') || 'null')
+    
+    if (!userData) {
+      // Show auth form - we'll need to add this
+      setShowAuthForm(true)
+      return
+    }
+    
     if (!hasVoted) {
-      // Add upvote to globalVotes system
-      const globalVotes = JSON.parse(localStorage.getItem('globalVotes') || '{}')
-      if (!globalVotes[tool.id]) {
-        globalVotes[tool.id] = { upvotes: 0, downvotes: 0 }
+      try {
+        const response = await fetch('/api/votes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            toolId: tool.id,
+            userEmail: userData.email,
+            userName: `${userData.firstName} ${userData.lastName}`,
+            voteType: 'up',
+            userData
+          })
+        })
+        
+        if (response.ok) {
+          const newVotes = votes + 1
+          setVotes(newVotes)
+          setHasVoted(true)
+          setVotingCounts(prev => ({ ...prev, upvotes: prev.upvotes + 1 }))
+        }
+      } catch (error) {
+        console.error('Error submitting vote:', error)
       }
-      globalVotes[tool.id].upvotes += 1
-      localStorage.setItem('globalVotes', JSON.stringify(globalVotes))
-      
-      const newVotes = votes + 1
-      setVotes(newVotes)
-      setHasVoted(true)
-      localStorage.setItem(`user-voted-${tool.id}`, 'true')
     } else {
-      // Remove upvote from globalVotes system
-      const globalVotes = JSON.parse(localStorage.getItem('globalVotes') || '{}')
-      if (globalVotes[tool.id] && globalVotes[tool.id].upvotes > 0) {
-        globalVotes[tool.id].upvotes -= 1
-        localStorage.setItem('globalVotes', JSON.stringify(globalVotes))
+      try {
+        const response = await fetch(`/api/votes?toolId=${tool.id}&userEmail=${userData.email}`, {
+          method: 'DELETE'
+        })
+        
+        if (response.ok) {
+          const newVotes = Math.max(0, votes - 1)
+          setVotes(newVotes)
+          setHasVoted(false)
+          setVotingCounts(prev => ({ ...prev, upvotes: Math.max(0, prev.upvotes - 1) }))
+        }
+      } catch (error) {
+        console.error('Error removing vote:', error)
       }
-      
-      const newVotes = Math.max(0, votes - 1)
-      setVotes(newVotes)
-      setHasVoted(false)
-      localStorage.removeItem(`user-voted-${tool.id}`)
     }
   }
 
@@ -163,12 +259,28 @@ export default function ToolPage({ params }: ToolPageProps) {
     localStorage.setItem(`tool-shares-${tool?.id}`, newShares.toString())
   }
 
+  const handleAuthSubmit = (userData: UserData) => {
+    // Store user data in session
+    localStorage.setItem('userSession', JSON.stringify(userData))
+    setShowAuthForm(false)
+    // Trigger the vote after authentication
+    setTimeout(() => handleVote(), 100)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen muted-gradient flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="muted-text-light">Loading tool...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (!tool) {
     notFound()
   }
-
-  const featuredTools = getFeaturedTools().filter(t => t.id !== tool!.id).slice(0, 5)
-  const similarTools = getSimilarTools(tool!.id, tool!.categories).slice(0, 3)
 
   return (
     <motion.div
@@ -202,15 +314,12 @@ export default function ToolPage({ params }: ToolPageProps) {
               transition={{ duration: 0.3 }}
             >
               {tool.featured && <FeaturedTag className="top-1 right-1" />}
-              <Image
+              <ToolImage 
                 src={tool.logo}
                 alt={`${tool.name} logo`}
-                fill
-                className="object-contain rounded-2xl"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(tool.name)}&size=200&background=0D8ABC&color=fff&format=png`;
-                }}
+                name={tool.name}
+                className="w-full h-full rounded-2xl"
+                size="lg"
               />
             </motion.div>
             
@@ -386,18 +495,13 @@ export default function ToolPage({ params }: ToolPageProps) {
                             whileHover={{ scale: 1.01, y: -2 }}
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 relative bg-gray-50 rounded-lg p-1.5 flex-shrink-0">
-                                <Image
-                                  src={similarTool.logo}
-                                  alt={similarTool.name}
-                                  fill
-                                  className="object-contain rounded"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(similarTool.name)}&size=36&background=0D8ABC&color=fff&format=png`;
-                                  }}
-                                />
-                              </div>
+                              <ToolImage 
+                                src={similarTool.logo}
+                                alt={similarTool.name}
+                                name={similarTool.name}
+                                size="sm"
+                                className="bg-gray-50 rounded-lg p-1.5"
+                              />
                               <div className="flex-1 min-w-0">
                                 <h4 className="font-semibold muted-text text-sm group-hover:orange-accent transition-colors truncate">{similarTool.name}</h4>
                                 <p className="muted-text-light text-xs line-clamp-1 mt-0.5">{similarTool.tagline}</p>
@@ -441,18 +545,13 @@ export default function ToolPage({ params }: ToolPageProps) {
                             style={{ marginBottom: '24px' }}
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 relative flex-shrink-0 bg-gray-50 rounded-lg p-1.5">
-                                <Image
-                                  src={featuredTool.logo}
-                                  alt={featuredTool.name}
-                                  fill
-                                  className="object-contain rounded"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(featuredTool.name)}&size=40&background=0D8ABC&color=fff&format=png`;
-                                  }}
-                                />
-                              </div>
+                              <ToolImage 
+                                src={featuredTool.logo}
+                                alt={featuredTool.name}
+                                name={featuredTool.name}
+                                size="md"
+                                className="bg-gray-50 rounded-lg p-1.5"
+                              />
                               <div className="flex-1 min-w-0">
                                 <h4 className="font-medium muted-text text-sm group-hover:orange-accent transition-colors">
                                   {featuredTool.name}
@@ -510,6 +609,14 @@ export default function ToolPage({ params }: ToolPageProps) {
           </div>
         </div>
       </div>
+
+      <UserAuthForm
+        isOpen={showAuthForm}
+        onClose={() => setShowAuthForm(false)}
+        onSubmit={handleAuthSubmit}
+        title="Vote for this tool"
+        description={`Please provide your information to vote for ${tool?.name}. This helps us maintain quality and prevent spam.`}
+      />
     </motion.div>
   )
 }

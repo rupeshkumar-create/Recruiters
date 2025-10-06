@@ -125,12 +125,24 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   }
 }
 
-// GET /api/tools/[id] - Get a specific tool
+// GET /api/tools/[id] - Get a specific tool by ID or slug
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params
 
-    const { data: tool, error } = await supabase
+    if (!id) {
+      return NextResponse.json({ error: 'ID or slug is required' }, { status: 400 })
+    }
+
+    // Check if Supabase is configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      return NextResponse.json({ error: 'Supabase not configured. Please check SUPABASE_SETUP.md' }, { status: 503 })
+    }
+
+    // Try to find by ID first (UUID format), then by slug
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+    
+    let query = supabase
       .from('tools')
       .select(`
         *,
@@ -141,14 +153,23 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           )
         )
       `)
-      .eq('id', id)
       .eq('approved', true)
       .eq('hidden', false)
-      .single()
+
+    if (isUUID) {
+      query = query.eq('id', id)
+    } else {
+      query = query.eq('slug', id)
+    }
+
+    const { data: tool, error } = await query.single()
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Tool not found' }, { status: 404 })
+      }
       console.error('Error fetching tool:', error)
-      return NextResponse.json({ error: 'Tool not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Failed to fetch tool' }, { status: 500 })
     }
 
     // Format the response to match the expected structure

@@ -37,7 +37,8 @@ export async function GET(request: NextRequest) {
 
     // Filter by category if specified
     if (category) {
-      query = query.eq('tool_categories.categories.slug', category);
+      // Use ilike for partial matching on category names
+      query = query.filter('tool_categories.categories.name', 'ilike', `%${category}%`);
     }
 
     // Search functionality
