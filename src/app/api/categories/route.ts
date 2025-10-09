@@ -4,65 +4,80 @@ import { getServiceSupabase } from '../../../lib/supabase';
 const supabase = getServiceSupabase();
 
 // GET /api/categories - Fetch all categories
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Check if Supabase is configured
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
-      return NextResponse.json({ error: 'Supabase not configured. Please check SUPABASE_SETUP.md' }, { status: 503 });
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
     }
-    
-    const { data: categories, error } = await supabase
+
+    const { searchParams } = new URL(request.url);
+    const activeOnly = searchParams.get('active') === 'true';
+
+    let query = supabase
       .from('categories')
       .select('*')
       .order('name', { ascending: true });
 
+    // Filter by active status if requested
+    if (activeOnly) {
+      query = query.eq('active', true);
+    }
+
+    const { data: categories, error } = await query;
+
     if (error) {
       console.error('Error fetching categories:', error);
-      // Return empty array instead of error to prevent build failures
-      return NextResponse.json([]);
+      return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
     }
 
     return NextResponse.json(categories || []);
   } catch (error) {
     console.error('Error in GET /api/categories:', error);
-    // Return empty array instead of error to prevent build failures
-    return NextResponse.json([]);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// POST /api/categories - Create a new category (admin only)
+// POST /api/categories - Create a new category
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { name } = body;
+    // Check if Supabase is configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+    }
 
-    if (!name) {
+    const body = await request.json();
+    const { name, description } = body;
+
+    // Validate required fields
+    if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
     }
 
-    // Generate slug
-    const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    // Generate slug from name
+    const slug = name.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single
+      .trim();
 
-    // Check if category already exists
-    const { data: existingCategory } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('name', name)
-      .single();
-
-    if (existingCategory) {
-      return NextResponse.json({ error: 'Category already exists' }, { status: 409 });
-    }
-
-    // Create the category
+    // Insert the category
     const { data: category, error } = await supabase
       .from('categories')
-      .insert({ name, slug })
+      .insert({
+        name: name.trim(),
+        slug,
+        description: description?.trim() || null,
+        active: true
+      })
       .select()
       .single();
 
     if (error) {
       console.error('Error creating category:', error);
+      if (error.code === '23505') { // Unique constraint violation
+        return NextResponse.json({ error: 'Category name or slug already exists' }, { status: 409 });
+      }
       return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });
     }
 
@@ -73,29 +88,52 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT /api/categories - Update a category (admin only)
+// PUT /api/categories - Update a category
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { id, name } = body;
-
-    if (!id || !name) {
-      return NextResponse.json({ error: 'Category ID and name are required' }, { status: 400 });
+    // Check if Supabase is configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
     }
 
-    // Generate new slug
-    const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const body = await request.json();
+    const { id, name, description, active } = body;
+
+    // Validate required fields
+    if (!id) {
+      return NextResponse.json({ error: 'Category ID is required' }, { status: 400 });
+    }
+
+    if (!name || !name.trim()) {
+      return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
+    }
+
+    // Generate slug from name
+    const slug = name.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single
+      .trim();
 
     // Update the category
     const { data: category, error } = await supabase
       .from('categories')
-      .update({ name, slug })
+      .update({
+        name: name.trim(),
+        slug,
+        description: description?.trim() || null,
+        active: active !== undefined ? active : true,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', id)
       .select()
       .single();
 
     if (error) {
       console.error('Error updating category:', error);
+      if (error.code === '23505') { // Unique constraint violation
+        return NextResponse.json({ error: 'Category name or slug already exists' }, { status: 409 });
+      }
       return NextResponse.json({ error: 'Failed to update category' }, { status: 500 });
     }
 
@@ -106,9 +144,14 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE /api/categories - Delete a category (admin only)
+// DELETE /api/categories - Delete a category
 export async function DELETE(request: NextRequest) {
   try {
+    // Check if Supabase is configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -116,25 +159,22 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Category ID is required' }, { status: 400 });
     }
 
-    // Check if category is being used by any tools or submissions
-    const { data: toolCategories } = await supabase
+    // Check if category is being used by any tools
+    const { data: toolCategories, error: checkError } = await supabase
       .from('tool_categories')
       .select('id')
       .eq('category_id', id)
       .limit(1);
 
-    const { data: submissionCategories } = await supabase
-      .from('submission_categories')
-      .select('id')
-      .eq('category_id', id)
-      .limit(1);
-
-    if (toolCategories && toolCategories.length > 0) {
-      return NextResponse.json({ error: 'Cannot delete category that is being used by tools' }, { status: 409 });
+    if (checkError) {
+      console.error('Error checking category usage:', checkError);
+      return NextResponse.json({ error: 'Failed to check category usage' }, { status: 500 });
     }
 
-    if (submissionCategories && submissionCategories.length > 0) {
-      return NextResponse.json({ error: 'Cannot delete category that is being used by submissions' }, { status: 409 });
+    if (toolCategories && toolCategories.length > 0) {
+      return NextResponse.json({ 
+        error: 'Cannot delete category that is being used by tools. Please remove it from all tools first.' 
+      }, { status: 409 });
     }
 
     // Delete the category

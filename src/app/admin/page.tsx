@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Eye, Check, X, Lock, Star, Settings, Edit3, FolderPlus, Plus } from 'lucide-react'
+import { Eye, Check, X, Lock, Star, Settings, Edit3, FolderPlus, Plus, MessageCircle, ThumbsUp } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -258,7 +258,7 @@ export default function AdminPage() {
           </div>
           
           {/* Navigation Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
           <Card className="h-48 hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white via-orange-50/30 to-orange-100/20 hover:from-orange-50/50 hover:to-orange-100/30">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
@@ -305,6 +305,77 @@ export default function AdminPage() {
               <CardContent className="pt-0 flex flex-col justify-between h-full">
                 <CardDescription className="mb-4 text-sm text-slate-600">Add new tools to the directory</CardDescription>
                 <div className="text-sm bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent font-bold group-hover:from-purple-700 group-hover:to-violet-700 transition-all">Add Tool →</div>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          <Link href="/admin/priority">
+            <Card className="h-48 hover:shadow-xl transition-all duration-300 cursor-pointer border-0 bg-gradient-to-br from-white via-blue-50/30 to-cyan-100/20 hover:from-blue-50/50 hover:to-cyan-100/30 group">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-sm group-hover:from-blue-600 group-hover:to-cyan-600 transition-all">
+                    <Star className="w-5 h-5 text-white" />
+                  </div>
+                  <CardTitle className="text-lg font-bold text-slate-800">Top 15 Priority</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0 flex flex-col justify-between h-full">
+                <CardDescription className="mb-4 text-sm text-slate-600">Manage the top 15 tools that appear first on homepage</CardDescription>
+                <div className="text-sm bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent font-bold group-hover:from-blue-700 group-hover:to-cyan-700 transition-all">Manage Priority →</div>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          <Link href="/admin/categories">
+            <Card className="h-48 hover:shadow-xl transition-all duration-300 cursor-pointer border-0 bg-gradient-to-br from-white via-indigo-50/30 to-purple-100/20 hover:from-indigo-50/50 hover:to-purple-100/30 group">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl shadow-sm group-hover:from-indigo-600 group-hover:to-purple-600 transition-all">
+                    <Settings className="w-5 h-5 text-white" />
+                  </div>
+                  <CardTitle className="text-lg font-bold text-slate-800">Categories</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0 flex flex-col justify-between h-full">
+                <CardDescription className="mb-4 text-sm text-slate-600">Manage categories for tools and submission forms</CardDescription>
+                <div className="text-sm bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent font-bold group-hover:from-indigo-700 group-hover:to-purple-700 transition-all">Manage Categories →</div>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          <Link href="/admin/comments">
+            <Card className="h-48 hover:shadow-xl transition-all duration-300 cursor-pointer border-0 bg-gradient-to-br from-white via-teal-50/30 to-emerald-100/20 hover:from-teal-50/50 hover:to-emerald-100/30 group">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl shadow-sm group-hover:from-teal-600 group-hover:to-emerald-600 transition-all">
+                    <MessageCircle className="w-5 h-5 text-white" />
+                  </div>
+                  <CardTitle className="text-lg font-bold text-slate-800">Comments</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0 flex flex-col justify-between h-full">
+                <CardDescription className="mb-4 text-sm text-slate-600">Review and approve user comments on tools</CardDescription>
+                <div className="text-sm bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent font-bold group-hover:from-teal-700 group-hover:to-emerald-700 transition-all">Manage Comments →</div>
+              </CardContent>
+            </Card>
+          </Link>
+          </div>
+
+          {/* Second row of navigation cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+          <Link href="/admin/votes">
+            <Card className="h-48 hover:shadow-xl transition-all duration-300 cursor-pointer border-0 bg-gradient-to-br from-white via-pink-50/30 to-rose-100/20 hover:from-pink-50/50 hover:to-rose-100/30 group">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl shadow-sm group-hover:from-pink-600 group-hover:to-rose-600 transition-all">
+                    <ThumbsUp className="w-5 h-5 text-white" />
+                  </div>
+                  <CardTitle className="text-lg font-bold text-slate-800">Votes</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0 flex flex-col justify-between h-full">
+                <CardDescription className="mb-4 text-sm text-slate-600">View and manage user votes on tools</CardDescription>
+                <div className="text-sm bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent font-bold group-hover:from-pink-700 group-hover:to-rose-700 transition-all">Manage Votes →</div>
               </CardContent>
             </Card>
           </Link>

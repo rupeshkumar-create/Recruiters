@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'AI Staffing Tools Directory',
-  description: 'Curated directory of premium AI-powered staffing and recruitment tools',
+  title: 'AI-Powered Staffing Tools',
+  description: 'Discover the best AI-powered tools for modern recruitment and staffing',
 }
 
 export default function RootLayout({
@@ -17,9 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen gradient-bg">
-          {children}
-        </div>
+        {children}
       </body>
     </html>
   )

@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       query = query.or(`name.ilike.%${search}%,tagline.ilike.%${search}%,content.ilike.%${search}%`);
     }
 
-    const { data: tools, error } = await query.order('created_at', { ascending: false });
+    const { data: tools, error } = await query.order('priority_order', { ascending: true, nullsLast: true }).order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching tools:', error);
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, url, tagline, content, description, logo, categories, featured = false, hidden = false, submitter_email } = body;
+    const { name, url, tagline, content, description, logo, categories, featured = false, hidden = false, submitter_email, priority_order = null } = body;
 
     // Validate required fields
     if (!name || !url || !tagline) {
@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
         featured,
         hidden,
         approved: true,
-        submitter_email
+        submitter_email,
+        priority_order
       })
       .select()
       .single();
@@ -137,7 +138,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, name, url, tagline, content, description, logo, categories, featured, hidden } = body;
+    const { id, name, url, tagline, content, description, logo, categories, featured, hidden, priority_order } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 });
@@ -155,6 +156,7 @@ export async function PUT(request: NextRequest) {
         logo,
         featured,
         hidden,
+        priority_order,
         slug: name ? name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') : undefined
       })
       .eq('id', id)

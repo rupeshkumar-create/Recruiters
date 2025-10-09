@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { X, User, Building, Briefcase, Linkedin, Mail, Shield } from 'lucide-react'
+import { X, User, Building, Briefcase, Mail } from 'lucide-react'
 
 interface UserAuthFormProps {
   isOpen: boolean
@@ -17,24 +17,10 @@ export interface UserData {
   lastName: string
   company: string
   title: string
-  linkedinUrl: string
   email: string
 }
 
-const businessEmailDomains = [
-  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com',
-  'icloud.com', 'live.com', 'msn.com', 'ymail.com', 'protonmail.com'
-]
 
-const isBusinessEmail = (email: string): boolean => {
-  const domain = email.split('@')[1]?.toLowerCase()
-  return Boolean(domain && !businessEmailDomains.includes(domain))
-}
-
-const isValidLinkedInUrl = (url: string): boolean => {
-  const linkedinRegex = /^https:\/\/(www\.)?linkedin\.com\/(in|pub)\/[a-zA-Z0-9-]+\/?$/
-  return linkedinRegex.test(url)
-}
 
 export default function UserAuthForm({ isOpen, onClose, onSubmit, title, description }: UserAuthFormProps) {
   const [formData, setFormData] = useState<UserData>({
@@ -42,45 +28,13 @@ export default function UserAuthForm({ isOpen, onClose, onSubmit, title, descrip
     lastName: '',
     company: '',
     title: '',
-    linkedinUrl: '',
     email: ''
   })
   
   const [errors, setErrors] = useState<Partial<UserData>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [captchaToken, setCaptchaToken] = useState('')
-  const [captchaError, setCaptchaError] = useState('')
-  const captchaRef = useRef<HTMLDivElement>(null)
 
-  // Load Friendly Captcha script
-  useEffect(() => {
-    if (isOpen && !document.querySelector('script[src*="friendly-challenge"]')) {
-      const script = document.createElement('script')
-      script.type = 'module'
-      script.src = 'https://cdn.jsdelivr.net/npm/friendly-challenge@0.9.16/widget.module.min.js'
-      script.async = true
-      script.defer = true
-      document.head.appendChild(script)
-    }
-  }, [isOpen])
 
-  // Set up captcha event listener
-  useEffect(() => {
-    const handleCaptchaSolved = (e: any) => {
-      setCaptchaToken(e.detail.solution)
-      setCaptchaError('')
-    }
-
-    if (captchaRef.current) {
-      captchaRef.current.addEventListener('frc-captcha-solved', handleCaptchaSolved)
-      
-      return () => {
-        if (captchaRef.current) {
-          captchaRef.current.removeEventListener('frc-captcha-solved', handleCaptchaSolved)
-        }
-      }
-    }
-  }, [isOpen])
 
 
 
@@ -107,14 +61,6 @@ export default function UserAuthForm({ isOpen, onClose, onSubmit, title, descrip
       newErrors.email = 'Email is required'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address'
-    } else if (!isBusinessEmail(formData.email)) {
-      newErrors.email = 'Please use a business email address (not personal email)'
-    }
-
-    if (!formData.linkedinUrl.trim()) {
-      newErrors.linkedinUrl = 'LinkedIn URL is required'
-    } else if (!isValidLinkedInUrl(formData.linkedinUrl)) {
-      newErrors.linkedinUrl = 'Please enter a valid LinkedIn profile URL'
     }
 
     setErrors(newErrors)
@@ -125,42 +71,6 @@ export default function UserAuthForm({ isOpen, onClose, onSubmit, title, descrip
     e.preventDefault()
     
     if (!validateForm()) {
-      return
-    }
-
-    if (!captchaToken) {
-      setCaptchaError('Please complete the captcha verification')
-      return
-    }
-
-    // Verify captcha with our API endpoint
-    try {
-      const captchaResponse = await fetch('/api/verify-captcha', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          solution: captchaToken
-        })
-      })
-      
-      const captchaResult = await captchaResponse.json()
-      if (!captchaResult.success) {
-        setCaptchaError('Captcha verification failed. Please try again.')
-        // Reset captcha
-        setCaptchaToken('')
-        if (captchaRef.current) {
-          const captchaWidget = captchaRef.current.querySelector('.frc-captcha')
-          if (captchaWidget) {
-            (captchaWidget as any).reset()
-          }
-        }
-        return
-      }
-    } catch (error) {
-      setCaptchaError('Captcha verification failed. Please try again.')
-      setCaptchaToken('')
       return
     }
 
@@ -182,21 +92,9 @@ export default function UserAuthForm({ isOpen, onClose, onSubmit, title, descrip
       lastName: '',
       company: '',
       title: '',
-      linkedinUrl: '',
       email: ''
     })
     setErrors({})
-    setCaptchaToken('')
-    setCaptchaError('')
-    
-    // Reset captcha widget
-    if (captchaRef.current) {
-      const captchaWidget = captchaRef.current.querySelector('.frc-captcha')
-      if (captchaWidget) {
-        (captchaWidget as any).reset()
-      }
-    }
-    
     onClose()
   }
 
@@ -219,7 +117,7 @@ export default function UserAuthForm({ isOpen, onClose, onSubmit, title, descrip
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="muted-card rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+        className="muted-card rounded-xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto"
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
@@ -318,7 +216,7 @@ export default function UserAuthForm({ isOpen, onClose, onSubmit, title, descrip
           <div>
             <label className="block text-sm font-medium muted-text mb-2 flex items-center gap-2">
               <Mail className="w-4 h-4" />
-              Business Email *
+              Email Address *
             </label>
             <input
               type="email"
@@ -331,45 +229,6 @@ export default function UserAuthForm({ isOpen, onClose, onSubmit, title, descrip
             />
             {errors.email && (
               <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-            )}
-            <p className="text-xs muted-text-light mt-1">Please use your business email (not Gmail, Yahoo, etc.)</p>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium muted-text mb-2 flex items-center gap-2">
-              <Linkedin className="w-4 h-4" />
-              LinkedIn Profile URL *
-            </label>
-            <input
-              type="url"
-              value={formData.linkedinUrl}
-              onChange={(e) => handleInputChange('linkedinUrl', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                errors.linkedinUrl ? 'border-red-300' : 'border-neutral-200'
-              }`}
-              placeholder="https://linkedin.com/in/johndoe"
-            />
-            {errors.linkedinUrl && (
-              <p className="text-red-500 text-xs mt-1">{errors.linkedinUrl}</p>
-            )}
-          </div>
-          
-          {/* Human Verification */}
-          <div className="bg-neutral-50 p-4 rounded-lg">
-            <label className="block text-sm font-medium muted-text mb-2 flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              Human Verification *
-            </label>
-            <p className="text-sm muted-text-light mb-2">
-              Please complete the verification below to prove you're human.
-            </p>
-            <div 
-              ref={captchaRef}
-              className="frc-captcha" 
-              data-sitekey="FCMV995O03V7RIMQ"
-            ></div>
-            {captchaError && (
-              <p className="text-red-500 text-xs mt-1">{captchaError}</p>
             )}
           </div>
           

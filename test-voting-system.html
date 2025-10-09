@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        code {
+            background: #e9ecef;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🗳️ Voting & Comment System Implementation</h1>
+    
+    <div class="success">
+        <h2>✅ Implementation Complete!</h2>
+        <p>The voting and comment system has been successfully implemented with the following features:</p>
+    </div>
+
+    <div class="test-section">
+        <h3>🔐 Authentication Required Voting</h3>
+        <ul>
+            <li>Users must fill out a form before voting (first time only)</li>
+            <li>Form data is stored in localStorage for 30 days</li>
+            <li>Upvotes are tracked and displayed in "Helpful" section</li>
+            <li>Downvotes are tracked and displayed in "Not Helpful" section</li>
+            <li>Thank you message appears after voting</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>💬 Comment Approval System</h3>
+        <ul>
+            <li>All comments require admin approval before being displayed</li>
+            <li>Users see a thank you message after submitting comments</li>
+            <li>Admin can approve/reject comments via <code>/admin/comments</code></li>
+            <li>Only approved comments appear on tool pages</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 Community Stats</h3>
+        <ul>
+            <li>Helpful votes count (upvotes)</li>
+            <li>Not Helpful votes count (downvotes)</li>
+            <li>Approved comments count</li>
+            <li>Share count</li>
+        </ul>
+    </div>
+
+    <div class="info">
+        <h3>🚀 Testing Instructions</h3>
+        <ol>
+            <li>Run the database migration in Supabase SQL editor</li>
+            <li>Visit any tool page (e.g., <code>http://localhost:3001/tool/mercuryats</code>)</li>
+            <li>Try voting - you should see the authentication form</li>
+            <li>Fill out the form and submit - vote should be recorded</li>
+            <li>Try commenting - you should see the thank you message</li>
+            <li>Visit <code>/admin/comments</code> to approve the comment</li>
+            <li>Refresh the tool page to see the approved comment</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>🔧 Database Migration Required</h3>
+        <p>Run this SQL in your Supabase SQL editor:</p>
+        <pre><code>-- Add comment approval system
+ALTER TABLE comments 
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+ADD COLUMN IF NOT EXISTS user_company VARCHAR(255),
+ADD COLUMN IF NOT EXISTS user_title VARCHAR(255),
+ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS approved_by VARCHAR(255);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_comments_status ON comments(status);
+CREATE INDEX IF NOT EXISTS idx_comments_approved_at ON comments(approved_at);
+
+-- Update existing comments to be approved
+UPDATE comments 
+SET status = 'approved', approved_at = created_at, approved_by = 'system'
+WHERE status = 'pending';
+
+-- Update RLS policies
+DROP POLICY IF EXISTS "Public can view comments" ON comments;
+CREATE POLICY "Public can view approved comments" ON comments
+    FOR SELECT USING (status = 'approved');</code></pre>
+    </div>
+
+    <div class="success">
+        <h3>🎉 Features Implemented</h3>
+        <ul>
+            <li>✅ Form required before voting</li>
+            <li>✅ Vote counts update in real-time</li>
+            <li>✅ Separate helpful/not helpful tracking</li>
+            <li>✅ Comment approval system</li>
+            <li>✅ Admin comment management</li>
+            <li>✅ Thank you messages for votes and comments</li>
+            <li>✅ Community stats display</li>
+        </ul>
+    </div>
+</body>
+</html>

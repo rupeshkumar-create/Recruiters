@@ -3,7 +3,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ExternalLink, Tag, Star, TrendingUp, Clock, Target, Users, Calendar, MapPin, ChevronUp, MessageCircle, Share2, Copy, Heart, ThumbsUp, Linkedin, X } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Tag, Star, TrendingUp, Clock, Target, Users, Calendar, MapPin, ChevronUp, MessageCircle, Share2, Copy, Heart, ThumbsUp, ThumbsDown, Linkedin, X } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import VotingSection from '../../../components/VotingSection'
@@ -11,6 +11,8 @@ import CommentSection from '../../../components/CommentSection'
 import FeaturedTag from '../../../components/FeaturedTag'
 import ToolImage from '../../../components/ToolImage'
 import UserAuthForm, { UserData } from '../../../components/UserAuthForm'
+import Navigation from '../../../components/Navigation'
+import EmailSubscription from '../../../components/EmailSubscription'
 import { useState, useEffect } from 'react'
 
 interface Tool {
@@ -76,13 +78,20 @@ export default function ToolPage({ params }: ToolPageProps) {
   const [loading, setLoading] = useState(true)
   const [featuredTools, setFeaturedTools] = useState<Tool[]>([])
   const [similarTools, setSimilarTools] = useState<Tool[]>([])
-  const [votes, setVotes] = useState(0)
   const [hasVoted, setHasVoted] = useState(false)
   const [copied, setCopied] = useState(false)
   const [shares, setShares] = useState(0)
   const [votingCounts, setVotingCounts] = useState({ upvotes: 0, downvotes: 0 })
   const [commentCount, setCommentCount] = useState(0)
   const [showAuthForm, setShowAuthForm] = useState(false)
+
+  // Helper function to format category names with proper case
+  const formatCategoryName = (category: string): string => {
+    return category
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ')
+  }
 
   // Fetch tool data from API
   useEffect(() => {
@@ -97,7 +106,9 @@ export default function ToolPage({ params }: ToolPageProps) {
         }
         
         if (!response.ok) {
-          throw new Error('Failed to fetch tool')
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+          console.error('API Error:', response.status, errorData)
+          throw new Error(`API Error: ${response.status} - ${errorData.error || 'Failed to fetch tool'}`)
         }
         
         const toolData = await response.json()
@@ -110,19 +121,45 @@ export default function ToolPage({ params }: ToolPageProps) {
           setFeaturedTools(featured.filter((t: Tool) => t.id !== toolData.id).slice(0, 5))
         }
         
-        // Fetch similar tools (same category)
+        // Fetch similar tools (same category, then all tools if not enough)
+        let similarToolsFound: Tool[] = []
+        
         if (toolData.categories) {
+          // First try to get tools from the same category
           const firstCategory = toolData.categories.split(',')[0].trim()
           const similarResponse = await fetch(`/api/tools?category=${encodeURIComponent(firstCategory)}`)
           if (similarResponse.ok) {
             const similar = await similarResponse.json()
-            setSimilarTools(similar.filter((t: Tool) => t.id !== toolData.id).slice(0, 3))
+            similarToolsFound = similar.filter((t: Tool) => t.id !== toolData.id)
           }
         }
         
+        // If we don't have enough similar tools, get more from all tools
+        if (similarToolsFound.length < 3) {
+          const allToolsResponse = await fetch('/api/tools')
+          if (allToolsResponse.ok) {
+            const allTools = await allToolsResponse.json()
+            const remainingTools = allTools.filter((t: Tool) => 
+              t.id !== toolData.id && 
+              !similarToolsFound.some(existing => existing.id === t.id)
+            )
+            
+            // Add random tools to fill up to 3
+            const additionalNeeded = 3 - similarToolsFound.length
+            const shuffled = remainingTools.sort(() => 0.5 - Math.random())
+            similarToolsFound = [...similarToolsFound, ...shuffled.slice(0, additionalNeeded)]
+          }
+        }
+        
+        setSimilarTools(similarToolsFound.slice(0, 3))
+        
       } catch (error) {
         console.error('Error fetching tool:', error)
-        notFound()
+        // Only call notFound() for actual 404s, not network errors
+        if (error instanceof Error && error.message.includes('404')) {
+          notFound()
+        }
+        // For other errors, just set loading to false and let the component handle it
       } finally {
         setLoading(false)
       }
@@ -141,7 +178,6 @@ export default function ToolPage({ params }: ToolPageProps) {
         if (votesResponse.ok) {
           const votesData = await votesResponse.json()
           setVotingCounts({ upvotes: votesData.upvotes, downvotes: votesData.downvotes })
-          setVotes(votesData.upvotes + votesData.downvotes)
           
           // Check if current user has voted
           const userData = JSON.parse(localStorage.getItem('userSession') || 'null')
@@ -151,9 +187,16 @@ export default function ToolPage({ params }: ToolPageProps) {
           }
         }
         
-        // Load comments from localStorage (until we have comments API)
-        const commentData = JSON.parse(localStorage.getItem(`comments_${tool.id}`) || '[]')
-        setCommentCount(commentData.length)
+        // Load approved comments from API
+        const commentsResponse = await fetch(`/api/comments?toolId=${tool.id}&status=approved`)
+        if (commentsResponse.ok) {
+          const commentsData = await commentsResponse.json()
+          setCommentCount(commentsData.length)
+        } else {
+          // Fallback to localStorage for backward compatibility
+          const commentData = JSON.parse(localStorage.getItem(`comments_${tool.id}`) || '[]')
+          setCommentCount(commentData.length)
+        }
         
         // Load shares from localStorage
         const savedShares = localStorage.getItem(`tool-shares-${tool.id}`)
@@ -179,7 +222,7 @@ export default function ToolPage({ params }: ToolPageProps) {
     const userData = JSON.parse(localStorage.getItem('userSession') || 'null')
     
     if (!userData) {
-      // Show auth form - we'll need to add this
+      // Show auth form
       setShowAuthForm(true)
       return
     }
@@ -201,10 +244,11 @@ export default function ToolPage({ params }: ToolPageProps) {
         })
         
         if (response.ok) {
-          const newVotes = votes + 1
-          setVotes(newVotes)
           setHasVoted(true)
           setVotingCounts(prev => ({ ...prev, upvotes: prev.upvotes + 1 }))
+          
+          // Show thank you message
+          alert('🎉 Thank you for your vote! Your feedback helps other users discover great tools.')
         }
       } catch (error) {
         console.error('Error submitting vote:', error)
@@ -216,8 +260,6 @@ export default function ToolPage({ params }: ToolPageProps) {
         })
         
         if (response.ok) {
-          const newVotes = Math.max(0, votes - 1)
-          setVotes(newVotes)
           setHasVoted(false)
           setVotingCounts(prev => ({ ...prev, upvotes: Math.max(0, prev.upvotes - 1) }))
         }
@@ -259,12 +301,39 @@ export default function ToolPage({ params }: ToolPageProps) {
     localStorage.setItem(`tool-shares-${tool?.id}`, newShares.toString())
   }
 
-  const handleAuthSubmit = (userData: UserData) => {
+  const handleAuthSubmit = async (userData: UserData) => {
     // Store user data in session
     localStorage.setItem('userSession', JSON.stringify(userData))
     setShowAuthForm(false)
-    // Trigger the vote after authentication
-    setTimeout(() => handleVote(), 100)
+    
+    // Submit the vote directly after authentication
+    if (!tool?.id) return
+    
+    try {
+      const response = await fetch('/api/votes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          toolId: tool.id,
+          userEmail: userData.email,
+          userName: `${userData.firstName} ${userData.lastName}`,
+          voteType: 'up',
+          userData
+        })
+      })
+      
+      if (response.ok) {
+        setHasVoted(true)
+        setVotingCounts(prev => ({ ...prev, upvotes: prev.upvotes + 1 }))
+        
+        // Show thank you message
+        alert('🎉 Thank you for your vote! Your feedback helps other users discover great tools.')
+      }
+    } catch (error) {
+      console.error('Error submitting vote:', error)
+    }
   }
 
   if (loading) {
@@ -279,17 +348,30 @@ export default function ToolPage({ params }: ToolPageProps) {
   }
 
   if (!tool) {
-    notFound()
+    return (
+      <div className="min-h-screen muted-gradient flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Tool Not Found</h1>
+          <p className="text-gray-600 mb-6">The tool you're looking for doesn't exist or there was an error loading it.</p>
+          <Link href="/" className="inline-flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Directory
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <motion.div
-      className="min-h-screen muted-gradient"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="min-h-screen muted-gradient">
+      <Navigation onSubmitToolClick={() => setShowAuthForm(true)} />
+      
+      <motion.div
+        className="container mx-auto px-4 py-8 max-w-6xl"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {/* Header */}
         <motion.div variants={itemVariants} className="mb-8">
           <Link href="/">
@@ -359,7 +441,7 @@ export default function ToolPage({ params }: ToolPageProps) {
                     whileHover={{ scale: 1.05 }}
                   >
                     <Tag className="w-3 h-3" />
-                    {category.trim()}
+                    {formatCategoryName(category.trim())}
                   </motion.span>
                 ))}
               </motion.div>
@@ -435,8 +517,8 @@ export default function ToolPage({ params }: ToolPageProps) {
               >
                 <ChevronUp className="w-5 h-5" />
               </motion.button>
-              <span className="text-lg font-bold muted-text mt-0.5">{votes}</span>
-              <span className="text-xs muted-text-light font-medium">votes</span>
+              <span className="text-lg font-bold muted-text mt-0.5">{votingCounts.upvotes}</span>
+              <span className="text-xs muted-text-light font-medium">helpful</span>
             </motion.div>
           </div>
         </motion.div>
@@ -466,8 +548,11 @@ export default function ToolPage({ params }: ToolPageProps) {
               <VotingSection 
                 toolId={tool.id} 
                 toolName={tool.name}
-                initialUpvotes={0}
-                initialDownvotes={0}
+                initialUpvotes={votingCounts.upvotes}
+                initialDownvotes={votingCounts.downvotes}
+onVoteChange={(upvotes, downvotes) => {
+                  setVotingCounts({ upvotes, downvotes })
+                }}
               />
             </motion.div>
 
@@ -476,6 +561,7 @@ export default function ToolPage({ params }: ToolPageProps) {
               <CommentSection 
                 toolId={tool.id} 
                 toolName={tool.name}
+                onCommentCountChange={(count) => setCommentCount(count)}
               />
             </motion.div>
 
@@ -487,24 +573,24 @@ export default function ToolPage({ params }: ToolPageProps) {
                     <CardTitle className="text-2xl muted-text">Similar Tools</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {similarTools.map((similarTool) => (
                         <Link key={similarTool.id} href={`/tool/${similarTool.slug}`}>
                           <motion.div
-                            className="p-4 border border-neutral-200 rounded-xl hover:shadow-md transition-all duration-300 cursor-pointer muted-card hover:bg-gradient-to-br hover:from-orange-50/20 hover:to-neutral-50/40 group"
-                            whileHover={{ scale: 1.01, y: -2 }}
+                            className="p-4 border border-neutral-200 rounded-xl hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 cursor-pointer bg-white hover:bg-gradient-to-br hover:from-orange-50/30 hover:to-neutral-50/20 group h-full"
+                            whileHover={{ scale: 1.02, y: -3 }}
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-col items-center text-center gap-3 h-full">
                               <ToolImage 
                                 src={similarTool.logo}
                                 alt={similarTool.name}
                                 name={similarTool.name}
-                                size="sm"
-                                className="bg-gray-50 rounded-lg p-1.5"
+                                size="md"
+                                className="bg-gray-50 rounded-lg p-2 shadow-sm"
                               />
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold muted-text text-sm group-hover:orange-accent transition-colors truncate">{similarTool.name}</h4>
-                                <p className="muted-text-light text-xs line-clamp-1 mt-0.5">{similarTool.tagline}</p>
+                                <h4 className="font-semibold muted-text text-sm group-hover:orange-accent transition-colors line-clamp-2 leading-tight mb-1">{similarTool.name}</h4>
+                                <p className="muted-text-light text-xs line-clamp-2 leading-relaxed">{similarTool.tagline}</p>
                               </div>
                             </div>
                           </motion.div>
@@ -584,9 +670,16 @@ export default function ToolPage({ params }: ToolPageProps) {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <ThumbsUp className="w-4 h-4 orange-accent" />
-                        <span className="muted-text-light">Votes</span>
+                        <span className="muted-text-light">Helpful</span>
                       </div>
-                      <span className="font-bold muted-text">{votingCounts.upvotes + votingCounts.downvotes}</span>
+                      <span className="font-bold muted-text">{votingCounts.upvotes}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ThumbsDown className="w-4 h-4 text-red-500" />
+                        <span className="muted-text-light">Not Helpful</span>
+                      </div>
+                      <span className="font-bold muted-text">{votingCounts.downvotes}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -598,7 +691,7 @@ export default function ToolPage({ params }: ToolPageProps) {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Share2 className="w-4 h-4 text-neutral-500" />
-                        <span className="muted-text-light">Share</span>
+                        <span className="muted-text-light">Shares</span>
                       </div>
                       <span className="font-bold muted-text">{shares}</span>
                     </div>
@@ -608,15 +701,20 @@ export default function ToolPage({ params }: ToolPageProps) {
             </motion.div>
           </div>
         </div>
-      </div>
 
-      <UserAuthForm
-        isOpen={showAuthForm}
-        onClose={() => setShowAuthForm(false)}
-        onSubmit={handleAuthSubmit}
-        title="Vote for this tool"
-        description={`Please provide your information to vote for ${tool?.name}. This helps us maintain quality and prevent spam.`}
-      />
-    </motion.div>
+        <UserAuthForm
+          isOpen={showAuthForm}
+          onClose={() => setShowAuthForm(false)}
+          onSubmit={handleAuthSubmit}
+          title="Vote for this tool"
+          description={`Please provide your information to vote for ${tool?.name}. This helps us maintain quality and prevent spam.`}
+        />
+      </motion.div>
+
+      {/* Email Subscription Section - Footer */}
+      <div className="bg-gray-50 border-t border-gray-200 shadow-inner">
+        <EmailSubscription className="shadow-sm" />
+      </div>
+    </div>
   )
 }

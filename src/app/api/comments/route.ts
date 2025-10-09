@@ -1,138 +1,167 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '../../../lib/supabase'
+import { NextRequest, NextResponse } from 'next/server';
+import { getServiceSupabase } from '../../../lib/supabase';
 
-// GET /api/comments - Get comments for a tool
+const supabase = getServiceSupabase();
+
+// GET /api/comments - Fetch comments for a tool or all comments (admin)
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const toolId = searchParams.get('toolId')
+    const { searchParams } = new URL(request.url);
+    const toolId = searchParams.get('toolId');
+    const status = searchParams.get('status') || 'approved'; // Default to approved comments
 
-    if (!toolId) {
-      return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 })
+    // Check if Supabase is configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
     }
 
-    const { data: comments, error } = await supabase
+    let query = supabase
       .from('comments')
       .select('*')
-      .eq('tool_id', toolId)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching comments:', error)
-      return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 })
+    // Filter by tool if specified (for public use)
+    if (toolId && toolId !== 'all') {
+      query = query.eq('tool_id', toolId);
     }
 
-    return NextResponse.json(comments)
+    // Filter by status if specified
+    if (status !== 'all') {
+      query = query.eq('status', status);
+    }
+
+    const { data: comments, error } = await query;
+
+    if (error) {
+      console.error('Error fetching comments:', error);
+      return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 });
+    }
+
+    return NextResponse.json(comments || []);
   } catch (error) {
-    console.error('Error in comments API:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in GET /api/comments:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// POST /api/comments - Submit a comment
+// POST /api/comments - Submit a new comment
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { toolId, userEmail, userName, content, userData } = body
+    const body = await request.json();
+    const { toolId, userEmail, userName, userCompany, userTitle, content } = body;
 
     if (!toolId || !userEmail || !userName || !content) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (content.trim().length === 0) {
-      return NextResponse.json({ error: 'Comment content cannot be empty' }, { status: 400 })
+    // Check if Supabase is configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
     }
 
-    const { data, error } = await supabase
+    // Insert the comment with pending status
+    const { data: comment, error } = await supabase
       .from('comments')
       .insert({
         tool_id: toolId,
         user_email: userEmail,
         user_name: userName,
+        user_company: userCompany,
+        user_title: userTitle,
         content: content.trim(),
-        user_data: userData
+        status: 'pending'
       })
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error('Error inserting comment:', error)
-      return NextResponse.json({ error: 'Failed to insert comment' }, { status: 500 })
+      console.error('Error creating comment:', error);
+      return NextResponse.json({ error: 'Failed to create comment' }, { status: 500 });
     }
 
-    return NextResponse.json({ comment: data })
+    return NextResponse.json(comment, { status: 201 });
   } catch (error) {
-    console.error('Error in comments API:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in POST /api/comments:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// PUT /api/comments - Update a comment
+// PUT /api/comments - Update comment status (admin only)
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { commentId, content, userEmail } = body
+    const body = await request.json();
+    const { commentId, status, approvedBy } = body;
 
-    if (!commentId || !content || !userEmail) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    if (!commentId || !status) {
+      return NextResponse.json({ error: 'Comment ID and status are required' }, { status: 400 });
     }
 
-    if (content.trim().length === 0) {
-      return NextResponse.json({ error: 'Comment content cannot be empty' }, { status: 400 })
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    // Check if Supabase is configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+    }
+
+    const updateData: any = {
+      status,
+      updated_at: new Date().toISOString()
+    };
+
+    if (status === 'approved') {
+      updateData.approved_at = new Date().toISOString();
+      updateData.approved_by = approvedBy || 'admin';
+    }
+
+    const { data: comment, error } = await supabase
       .from('comments')
-      .update({
-        content: content.trim(),
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', commentId)
-      .eq('user_email', userEmail) // Ensure user can only update their own comments
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error('Error updating comment:', error)
-      return NextResponse.json({ error: 'Failed to update comment' }, { status: 500 })
+      console.error('Error updating comment:', error);
+      return NextResponse.json({ error: 'Failed to update comment' }, { status: 500 });
     }
 
-    if (!data) {
-      return NextResponse.json({ error: 'Comment not found or unauthorized' }, { status: 404 })
-    }
-
-    return NextResponse.json({ comment: data })
+    return NextResponse.json(comment);
   } catch (error) {
-    console.error('Error in comments API:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in PUT /api/comments:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// DELETE /api/comments - Delete a comment
+// DELETE /api/comments - Delete a comment (admin only)
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const commentId = searchParams.get('commentId')
-    const userEmail = searchParams.get('userEmail')
+    const { searchParams } = new URL(request.url);
+    const commentId = searchParams.get('commentId');
 
-    if (!commentId || !userEmail) {
-      return NextResponse.json({ error: 'Comment ID and user email are required' }, { status: 400 })
+    if (!commentId) {
+      return NextResponse.json({ error: 'Comment ID is required' }, { status: 400 });
+    }
+
+    // Check if Supabase is configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
     }
 
     const { error } = await supabase
       .from('comments')
       .delete()
-      .eq('id', commentId)
-      .eq('user_email', userEmail) // Ensure user can only delete their own comments
+      .eq('id', commentId);
 
     if (error) {
-      console.error('Error deleting comment:', error)
-      return NextResponse.json({ error: 'Failed to delete comment' }, { status: 500 })
+      console.error('Error deleting comment:', error);
+      return NextResponse.json({ error: 'Failed to delete comment' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ message: 'Comment deleted successfully' });
   } catch (error) {
-    console.error('Error in comments API:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in DELETE /api/comments:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

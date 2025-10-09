@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { Search, ExternalLink, Plus, Sparkles, Zap, ChevronDown } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import Navigation from '../components/Navigation'
+import HorizontalFilter from '../components/HorizontalFilter'
+import SearchBar from '../components/SearchBar'
 import SubmissionForm from '../components/SubmissionForm'
 import EmailSubscription from '../components/EmailSubscription'
-import FeaturedTag from '../components/FeaturedTag'
-import TypingIcon from '../components/TypingIcon'
 import ToolImage from '../components/ToolImage'
 import { csvTools } from '../lib/data'
 
@@ -33,39 +34,7 @@ const itemVariants = {
   }
 }
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 10, scale: 0.98 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.4, ease: "easeOut" }
-  },
-  hover: {
-    y: -4,
-    scale: 1.01,
-    transition: { duration: 0.2, ease: "easeOut" }
-  }
-}
 
-const logoVariants = {
-  hover: {
-    rotate: [0, -15, 15, 0],
-    scale: 1.2,
-    transition: { duration: 0.6, ease: "easeInOut" }
-  }
-}
-
-const buttonVariants = {
-  hover: {
-    scale: 1.05,
-    boxShadow: "0 10px 25px rgba(242, 107, 33, 0.3)",
-    transition: { duration: 0.2 }
-  },
-  tap: {
-    scale: 0.95
-  }
-}
 
 const scrollCardVariants = {
   hidden: { 
@@ -114,20 +83,33 @@ function ScrollAnimatedCard({ children, index }: { children: React.ReactNode, in
 }
 
 export default function HomePage() {
-  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['All'])
   const [searchTerm, setSearchTerm] = useState('')
   const [showSubmissionForm, setShowSubmissionForm] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
   const [tools, setTools] = useState<any[]>(csvTools) // Initialize with csvTools to prevent hydration mismatch
-  const [isClient, setIsClient] = useState(false)
+  const [initialToolsLoaded, setInitialToolsLoaded] = useState(false)
+
   
   const searchInputRef = useRef<HTMLInputElement>(null)
   const suggestionsRef = useRef<HTMLDivElement>(null)
 
+  // Ensure page starts at top on load
+  useEffect(() => {
+    // Force scroll to top immediately
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    
+    // Also set it after a small delay to ensure it sticks
+    const timer = setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [])
+
   // Load approved tools from Supabase API on component mount
   useEffect(() => {
-    setIsClient(true)
     
     const fetchTools = async () => {
       try {
@@ -135,26 +117,37 @@ export default function HomePage() {
         if (response.ok) {
           const toolsData = await response.json()
           setTools(toolsData)
+          setInitialToolsLoaded(true)
         } else {
           console.error('Failed to fetch tools from API, using CSV fallback')
           // Keep csvTools as fallback when API fails
-          setTools(getSampleTools())
+          setTools(csvTools)
+          setInitialToolsLoaded(true)
         }
       } catch (error) {
         console.error('Error fetching tools:', error, 'using CSV fallback')
         // Keep csvTools as fallback when API fails
-        setTools(getSampleTools())
+        setTools(csvTools)
+        setInitialToolsLoaded(true)
       }
     }
     
     fetchTools()
     
-    // Set up polling to refresh data every 30 seconds
-    const interval = setInterval(fetchTools, 30000)
+    // Set up polling to refresh data every 10 minutes (further reduced frequency)
+    const interval = setInterval(fetchTools, 600000)
+    
+    // Track last focus time to prevent excessive refreshes
+    let lastFocusRefresh = 0
     
     // Refresh data when window regains focus (user comes back from admin panel)
     const handleFocus = () => {
-      fetchTools()
+      const now = Date.now()
+      // Only refresh if it's been more than 30 seconds since last focus refresh
+      if (now - lastFocusRefresh > 30000) {
+        lastFocusRefresh = now
+        fetchTools()
+      }
     }
     
     // Listen for custom refresh events from admin panel
@@ -173,65 +166,7 @@ export default function HomePage() {
     }
   }, [])
 
-  // Sample tools fallback
-  const getSampleTools = () => [
-    {
-      id: '1',
-      name: 'ChatGPT',
-      logo: 'https://cdn.openai.com/API/logo-openai.svg',
-      tagline: 'AI-powered conversational assistant',
-      description: 'Advanced AI chatbot for various tasks',
-      content: 'ChatGPT is an advanced AI language model that can help with writing, coding, analysis, and creative tasks.',
-      categories: 'AI, Productivity',
-      url: 'https://chat.openai.com',
-      slug: 'chatgpt',
-      featured: true,
-      hidden: false,
-      approved: true
-    },
-    {
-      id: '2',
-      name: 'Midjourney',
-      logo: 'https://cdn.midjourney.com/b07c0c9c-47a5-4c0a-9c0a-7c5c5c5c5c5c/0_0.png',
-      tagline: 'AI image generation',
-      description: 'Create stunning images with AI',
-      content: 'Midjourney is an AI service that generates images from textual descriptions.',
-      categories: 'AI, Design',
-      url: 'https://midjourney.com',
-      slug: 'midjourney',
-      featured: false,
-      hidden: false,
-      approved: true
-    },
-    {
-      id: '3',
-      name: 'Notion AI',
-      logo: 'https://www.notion.so/images/logo-ios.png',
-      tagline: 'AI-powered workspace',
-      description: 'Smart note-taking and project management',
-      content: 'Notion AI helps you write, brainstorm, edit, summarize and more.',
-      categories: 'AI, Productivity',
-      url: 'https://notion.so',
-      slug: 'notion-ai',
-      featured: true,
-      hidden: false,
-      approved: true
-    },
-    {
-      id: '4',
-      name: 'GitHub Copilot',
-      logo: 'https://github.githubassets.com/images/modules/site/copilot/copilot.png',
-      tagline: 'AI pair programmer',
-      description: 'AI-powered code completion and suggestions',
-      content: 'GitHub Copilot uses AI to suggest code and entire functions in real-time.',
-      categories: 'AI, Development',
-      url: 'https://github.com/features/copilot',
-      slug: 'github-copilot',
-      featured: true,
-      hidden: false,
-      approved: true
-    }
-  ]
+
 
   const getSearchScore = useCallback((tool: any, searchTerm: string): number => {
     if (!searchTerm) return 0;
@@ -263,44 +198,76 @@ export default function HomePage() {
     return score;
   }, []);
 
-  // Generate categories from current tools to prevent hydration mismatch
-  const categories = useMemo(() => {
-    if (tools.length === 0) return ['All']
-    
-    const categorySet = new Set<string>()
-    tools.forEach(tool => {
-      if (tool.categories) {
-        // Split categories by comma and add each one
-        tool.categories.split(',').forEach((cat: string) => {
-          const trimmed = cat.trim()
-          if (trimmed) categorySet.add(trimmed)
-        })
-      }
-    })
-    
-    return ['All', ...Array.from(categorySet).sort()]
-  }, [tools])
-
-  // Helper function to get tools by category
-  const getToolsByCategory = (category: string) => {
-    if (category === 'All') {
-      return tools
-    }
-    return tools.filter(tool => 
-      tool.categories && tool.categories.toLowerCase().includes(category.toLowerCase())
-    )
+  // Helper function to format category names with proper case
+  const formatCategoryName = (category: string): string => {
+    return category
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ')
   }
+
+  // Load categories from API
+  const [categories, setCategories] = useState<string[]>(['All'])
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false)
+  
+  useEffect(() => {
+    // Only load categories once, not dependent on tools
+    if (categoriesLoaded) return
+    
+    const loadCategories = async () => {
+      try {
+        const response = await fetch('/api/categories?active=true')
+        if (response.ok) {
+          const categoriesData = await response.json()
+          const categoryNames = categoriesData.map((cat: any) => cat.name)
+          setCategories(['All', ...categoryNames.sort()])
+          setCategoriesLoaded(true)
+        } else {
+          console.error('Failed to load categories, will use fallback when tools load')
+          // Don't set categoriesLoaded to true here, let it fallback later
+        }
+      } catch (error) {
+        console.error('Error loading categories:', error)
+        // Don't set categoriesLoaded to true here, let it fallback later
+      }
+    }
+
+    loadCategories()
+  }, [categoriesLoaded])
+
+  // Fallback: Extract categories from tools if API failed and we have tools
+  useEffect(() => {
+    if (!categoriesLoaded && tools.length > 0) {
+      const categorySet = new Set<string>()
+      tools.forEach(tool => {
+        if (tool.categories) {
+          tool.categories.split(',').forEach((cat: string) => {
+            const trimmed = cat.trim()
+            if (trimmed) {
+              const formatted = formatCategoryName(trimmed)
+              categorySet.add(formatted)
+            }
+          })
+        }
+      })
+      setCategories(['All', ...Array.from(categorySet).sort()])
+      setCategoriesLoaded(true)
+    }
+  }, [tools, categoriesLoaded])
 
   const filteredTools = useMemo(() => {
     // First filter out hidden tools
     const visibleTools = tools.filter(tool => !tool.hidden)
     
-    // Then filter by category
-    let categoryFiltered = selectedCategory === 'All' 
-      ? visibleTools 
-      : visibleTools.filter(tool => 
-          tool.categories && tool.categories.toLowerCase().includes(selectedCategory.toLowerCase())
+    // Then filter by categories (support multiple selection)
+    let categoryFiltered = visibleTools
+    if (!selectedCategories.includes('All')) {
+      categoryFiltered = visibleTools.filter(tool => 
+        tool.categories && selectedCategories.some(category =>
+          tool.categories.toLowerCase().includes(category.toLowerCase())
         )
+      )
+    }
     
     // Finally apply search if needed
     if (searchTerm && searchTerm.length > 1) {
@@ -316,9 +283,13 @@ export default function HomePage() {
     }
     
     return categoryFiltered
-  }, [selectedCategory, searchTerm, tools, getSearchScore])
+  }, [selectedCategories, searchTerm, tools, getSearchScore])
 
-  const featuredTools = tools.filter(tool => tool.featured && !tool.hidden)
+  // Split tools for eager loading - first 6 tools (2 rows) load immediately
+  const eagerTools = useMemo(() => filteredTools.slice(0, 6), [filteredTools])
+  const lazyTools = useMemo(() => filteredTools.slice(6), [filteredTools])
+
+
 
   const suggestions = useMemo(() => {
     if (searchTerm.length < 2) return []
@@ -359,7 +330,7 @@ export default function HomePage() {
           e.preventDefault()
           if (selectedSuggestionIndex >= 0) {
             const selectedTool = suggestions[selectedSuggestionIndex]
-            router.push(`/tool/${selectedTool.id}`)
+            router.push(`/tool/${selectedTool.slug}`)
           }
           break
         case 'Escape':
@@ -387,312 +358,282 @@ export default function HomePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setSearchTerm(value)
-    setShowSuggestions(value.length >= 2)
-    setSelectedSuggestionIndex(-1)
-  }
+
+
+  // Track if this is the initial load and previous categories for comparison
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const previousCategoriesRef = useRef<string[]>(['All'])
+  
+  useEffect(() => {
+    // Mark initial load as complete after a short delay
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false)
+    }, 2000) // Increased delay to prevent premature scrolling
+    
+    return () => clearTimeout(timer)
+  }, [])
+  
+  // Auto-scroll to tools section only when categories actually change (not on initial load)
+  useEffect(() => {
+    // Skip if it's initial load
+    if (isInitialLoad) {
+      previousCategoriesRef.current = selectedCategories
+      return
+    }
+    
+    // Skip if categories haven't actually changed
+    if (JSON.stringify(selectedCategories) === JSON.stringify(previousCategoriesRef.current)) {
+      return
+    }
+    
+    // Only scroll when user actively changes categories and it's not the initial "All" selection
+    if (selectedCategories.length > 0 && !selectedCategories.includes('All')) {
+      const toolsSection = document.getElementById('tools-section')
+      if (toolsSection) {
+        const yOffset = -120 // Offset to account for sticky header
+        const y = toolsSection.getBoundingClientRect().top + window.pageYOffset + yOffset
+        window.scrollTo({ top: y, behavior: 'smooth' })
+      }
+    }
+    
+    previousCategoriesRef.current = selectedCategories
+  }, [selectedCategories, isInitialLoad])
+
+
+
+
+
+
+
+
 
   const router = useRouter()
 
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term)
+    setShowSuggestions(term.length >= 2)
+    setSelectedSuggestionIndex(-1)
+  }
+
   const handleSuggestionClick = (tool: any): void => {
-    router.push(`/tool/${tool.id}`)
+    router.push(`/tool/${tool.slug}`)
   }
 
   return (
-    <div className="min-h-screen muted-gradient flex flex-col">
+    <div className="min-h-screen bg-white">
+      {/* Navigation */}
+      <Navigation onSubmitToolClick={() => setShowSubmissionForm(true)} />
+      
       <motion.div 
         className="flex-1"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        <div className="container mx-auto px-4 py-12 max-w-7xl">
-        {/* Header */}
-        <motion.div className="text-center mb-16" variants={itemVariants}>
-          <motion.div
-            className="mb-6"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          >
-            <h1 className="text-5xl md:text-7xl font-bold muted-text">
-              AI Staffing Tools
-              <motion.span 
-                className="orange-accent"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3, duration: 0.6 }}
-              >
-                {" "}Directory
-              </motion.span>
-            </h1>
-          </motion.div>
-          <motion.p 
-            className="text-xl md:text-2xl muted-text-light max-w-4xl mx-auto mb-12 leading-relaxed"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.6 }}
-          >
-            Discover the best AI-powered tools for modern recruitment and staffing. 
-            From resume screening to candidate sourcing, find the perfect solution for your hiring needs.
-          </motion.p>
-
-          {/* Search Bar */}
-          <motion.div 
-            className="mb-8 max-w-2xl mx-auto"
-            variants={itemVariants}
-          >
-            <motion.div 
-              className="relative"
-              whileHover={{ scale: 1.02 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="absolute left-4 top-1/2 transform -translate-y-1/2 muted-text-light">
-                <TypingIcon size={20} />
-              </div>
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search by tool name, use case, or category..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                onFocus={() => searchTerm.length >= 2 && setShowSuggestions(true)}
-                className="w-full pl-12 pr-6 py-4 border border-neutral-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent muted-card text-lg shadow-sm hover:shadow-md transition-all duration-300 muted-text"
-                autoComplete="off"
-              />
-              
-              {/* Dropdown Suggestions */}
-              <AnimatePresence>
-                {showSuggestions && suggestions.length > 0 && (
-                  <motion.div
-                    ref={suggestionsRef}
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-neutral-200 rounded-2xl shadow-lg z-50 max-h-80 overflow-y-auto"
-                  >
-                    {suggestions.map((tool, index) => (
-                      <motion.div
-                        key={tool.id}
-                        className={`px-4 py-3 cursor-pointer transition-all duration-200 flex items-center gap-3 ${
-                          index === selectedSuggestionIndex
-                            ? 'bg-orange-50 border-l-4 border-orange-500'
-                            : 'hover:bg-neutral-50'
-                        } ${
-                          index === 0 ? 'rounded-t-2xl' : ''
-                        } ${
-                          index === suggestions.length - 1 ? 'rounded-b-2xl' : 'border-b border-neutral-100'
-                        }`}
-                        onClick={() => handleSuggestionClick(tool)}
-                        whileHover={{ x: 4 }}
-                        transition={{ duration: 0.1 }}
-                      >
-                        <div className="w-8 h-8 flex-shrink-0 bg-gray-50 rounded-lg p-1.5">
-                          <img 
-                            src={tool.logo.includes('linkedin.com') ? `https://images.weserv.nl/?url=${encodeURIComponent(tool.logo)}&w=32&h=32&fit=contain&bg=white` : tool.logo}
-                            alt={`${tool.name} logo`}
-                            className="w-full h-full object-contain rounded"
-                            onError={(e) => {
-                              const target = e.currentTarget;
-                              if (target.src.includes('weserv.nl')) {
-                                target.src = tool.logo;
-                                return;
-                              }
-                              target.style.display = 'none';
-                              const fallback = target.nextElementSibling as HTMLElement;
-                              if (fallback) fallback.style.display = 'flex';
-                            }}
-                          />
-                          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white font-bold text-xs hidden">
-                            {tool.name.charAt(0).toUpperCase()}
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm muted-text truncate text-left">{tool.name}</div>
-                          <div className="text-xs muted-text-light truncate text-left">{tool.tagline}</div>
-                        </div>
-                        {index === selectedSuggestionIndex && (
-                          <div className="text-orange-500 text-xs font-medium">Enter</div>
-                        )}
-                      </motion.div>
-                    ))}
-                    
-                    {/* Footer hint */}
-                    <div className="px-4 py-2 text-xs muted-text-light text-center border-t border-neutral-100 bg-neutral-50 rounded-b-2xl">
-                      Use ↑↓ to navigate, Enter to select, Esc to close
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          </motion.div>
-
-          {/* Submit Tool Button */}
-          <motion.div 
-            className="mb-12 text-center"
-            variants={itemVariants}
-          >
-            <motion.button
-              onClick={() => setShowSubmissionForm(true)}
-              className="orange-bg text-white px-10 py-4 rounded-2xl font-bold flex items-center gap-3 mx-auto text-lg shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-orange-500"
-              variants={buttonVariants}
-              whileHover="hover"
-              whileTap="tap"
-            >
-              <Plus className="w-6 h-6" />
-              Submit Your Tool
-            </motion.button>
-          </motion.div>
-        </motion.div>
-        
-        {/* Category Filter */}
-        <motion.div 
-          className="flex flex-wrap justify-center gap-3 mb-16"
-          variants={itemVariants}
-        >
-          {categories.map((category, index) => {
-            // Format category name with proper case
-            const formattedCategory = category === 'All' ? 'All' : 
-              category.split(' ')
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                .join(' ');
-                
-            return (
-              <motion.button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-6 py-3 rounded-2xl text-sm font-semibold transition-all duration-300 shadow-sm hover:shadow-md ${
-                  selectedCategory === category
-                    ? 'orange-bg text-white scale-105'
-                    : 'muted-card muted-text-light hover:bg-neutral-50 border border-neutral-300 hover:border-orange-400'
-                }`}
+        {/* Hero Section */}
+        <div className="bg-white pt-12 pb-4 shadow-sm border-b border-gray-100">
+          <div className="container mx-auto px-4 max-w-7xl">
+            <motion.div className="text-center" variants={itemVariants}>
+              <motion.h1 
+                className="text-3xl md:text-4xl font-bold text-gray-900 mb-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ 
-                  delay: Math.min(0.7 + index * 0.05, 1.2), // Cap the delay at 1.2s for faster loading
-                  duration: 0.3 // Reduce duration for faster animation
-                }}
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
               >
-                {formattedCategory}
-              </motion.button>
-            );
-          })}
-          {/* Remove the extra closing parentheses */}
-        </motion.div>
-
-      {/* Featured Tools Section */}
-      {featuredTools.length > 0 && (
-        <motion.div 
-          className="mb-20 container mx-auto px-4 max-w-7xl"
-          variants={itemVariants}
-        >
-          <h2 className="text-3xl font-bold muted-text mb-8 text-center">Featured Tools</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredTools.slice(0, 4).map((tool, index) => (
-              <ScrollAnimatedCard key={tool.id} index={index}>
-                <Link href={`/tool/${tool.slug}`}>
-                  <div className="muted-card rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group card-hover h-64 flex flex-col">
-                    {tool.featured && <FeaturedTag className="z-20" />}
-                    <div className="absolute inset-0 bg-gradient-to-br from-orange-50/30 to-neutral-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="relative z-10 flex flex-col h-full">
-                      <div className="flex items-center justify-center mb-4 mt-2">
-                        <motion.div 
-                          variants={logoVariants}
-                          whileHover="hover"
-                        >
-                          <ToolImage 
-                            src={tool.logo}
-                            alt={`${tool.name} logo`}
-                            name={tool.name}
-                            size="lg"
-                          />
-                        </motion.div>
-                      </div>
-                      <div className="flex-grow flex flex-col justify-between">
-                        <h3 className="font-bold text-lg muted-text mb-2 text-center group-hover:orange-accent transition-colors line-clamp-2">{tool.name}</h3>
-                        <p className="muted-text-light text-sm text-center line-clamp-3 leading-relaxed">{tool.tagline}</p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </ScrollAnimatedCard>
-            ))}
+                Discover the best AI-powered tools for modern recruitment and staffing
+              </motion.h1>
+              <motion.p 
+                className="text-base text-gray-600 max-w-2xl mx-auto leading-relaxed mb-1.5"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+              >
+                From resume screening to candidate sourcing, find the perfect solution for your hiring needs
+              </motion.p>
+            </motion.div>
           </div>
-        </motion.div>
-      )}
-
-      {/* Tools Grid */}
-      <div className="container mx-auto px-4 max-w-7xl mb-20">
-        <h2 className="text-3xl font-bold muted-text mb-8 text-center">{selectedCategory} Tools</h2>
-        <AnimatePresence mode="wait">
-          <motion.div 
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-            key={selectedCategory + searchTerm}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            {filteredTools.map((tool, index) => (
-              <ScrollAnimatedCard key={tool.id} index={index}>
-                <Link href={`/tool/${tool.slug}`}>
-                  <div className="muted-card rounded-2xl shadow-sm p-8 hover:shadow-md transition-all duration-300 group h-[320px] flex flex-col relative overflow-hidden card-hover">
-                    {tool.featured && <FeaturedTag size="sm" className="z-20" />}
-                    <div className="absolute inset-0 bg-gradient-to-br from-orange-50/20 to-neutral-50/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="relative z-10">
-                      <div className="flex items-start gap-5 mb-6 mt-2">
-                        <ToolImage 
-                          src={tool.logo}
-                          alt={`${tool.name} logo`}
-                          name={tool.name}
-                          size="md"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-xl font-bold muted-text mb-2 group-hover:orange-accent transition-colors">
-                            {tool.name}
-                          </h3>
-                          <span className="inline-block bg-neutral-100 muted-text-light text-xs px-3 py-1 rounded-full font-medium">
-                            {tool.categories.split(',')[0].trim()}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="muted-text-light text-sm leading-relaxed mb-4 flex-grow min-h-[80px]">
-                        {tool.tagline}
-                      </p>
-                      <div className="flex items-center justify-between pt-4 border-t border-neutral-100 mt-auto">
-                        <button className="flex items-center gap-2 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-md transition-colors">
-                          <ExternalLink className="w-3 h-3" />
-                          <span>Visit Website</span>
-                        </button>
-                        <div className="flex items-center text-orange-500 group-hover:text-orange-600 transition-colors">
-                          <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </ScrollAnimatedCard>
-            ))}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-
-
-      {/* Email Subscription Section - Footer */}
-      <EmailSubscription className="" />
-
-      {/* Submission Form Modal */}
-      <SubmissionForm 
-        isOpen={showSubmissionForm} 
-        onClose={() => setShowSubmissionForm(false)} 
-      />
         </div>
+
+        {/* Sticky Search Bar - Always visible */}
+        <div className="sticky top-16 z-50 bg-white shadow-md">
+          <div className="container mx-auto px-4 py-4 max-w-7xl">
+            {/* Search Bar */}
+            <div className="max-w-2xl mx-auto mb-3">
+              <SearchBar
+                searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                suggestions={suggestions}
+                showSuggestions={showSuggestions}
+                onShowSuggestions={setShowSuggestions}
+                selectedSuggestionIndex={selectedSuggestionIndex}
+                onSuggestionSelect={handleSuggestionClick}
+                className=""
+              />
+            </div>
+            
+            {/* Horizontal Filters */}
+            <HorizontalFilter
+              categories={categories}
+              selectedCategories={selectedCategories}
+              onCategoryChange={setSelectedCategories}
+              tools={tools}
+              className=""
+            />
+          </div>
+        </div>
+
+        {/* Main Content - Full Width Layout */}
+        <div className="bg-gray-50 shadow-inner">
+          <div className="container mx-auto px-4 max-w-7xl bg-white shadow-sm rounded-t-xl">
+            {/* Add some top padding to create gap from search bar */}
+            <div className="pt-6">
+              {/* Tools Count Header */}
+              <div className="mb-6">
+                <p className="text-sm text-gray-600 font-medium">
+                  Showing {filteredTools.length} tools
+                </p>
+              </div>
+            
+              {/* Tools Grid Container */}
+              <div id="tools-section" className="mb-16">
+                {/* Tools Grid - Clean Layout */}
+                <AnimatePresence mode="wait">
+                  {filteredTools.length > 0 ? (
+                    <div key={selectedCategories.join(',') + searchTerm}>
+                      {/* Eager Loading - First 2 rows (6 tools) */}
+                      <motion.div 
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {eagerTools.map((tool, index) => (
+                          <motion.div
+                            key={tool.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, delay: index * 0.1 }}
+                          >
+                            <Link href={`/tool/${tool.slug}`} className="block h-full">
+                              <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 group h-full flex flex-col shadow-sm">
+                                <div className="flex items-start gap-3 mb-4">
+                                  <div className="w-10 h-10 flex-shrink-0">
+                                    <ToolImage 
+                                      src={tool.logo}
+                                      alt={`${tool.name} logo`}
+                                      name={tool.name}
+                                      size="md"
+                                      className="w-full h-full rounded-lg shadow-sm"
+                                    />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2 leading-tight">
+                                      {tool.name}
+                                    </h3>
+                                    <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                                      {tool.tagline}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                <div className="mt-auto pt-4 flex items-center justify-between">
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 shadow-sm">
+                                    {formatCategoryName(tool.categories.split(',')[0].trim())}
+                                  </span>
+                                  <motion.div 
+                                    className="text-orange-600 hover:text-orange-700 text-sm font-medium flex items-center gap-1"
+                                    whileHover={{ x: 2 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    Visit Website
+                                    <ExternalLink className="w-3 h-3" />
+                                  </motion.div>
+                                </div>
+                              </div>
+                            </Link>
+                          </motion.div>
+                        ))}
+                      </motion.div>
+
+                      {/* Lazy Loading - Remaining tools */}
+                      {lazyTools.length > 0 && (
+                        <motion.div 
+                          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.3, delay: 0.2 }}
+                        >
+                          {lazyTools.map((tool, index) => (
+                            <ScrollAnimatedCard key={tool.id} index={index}>
+                              <Link href={`/tool/${tool.slug}`} className="block h-full">
+                                <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 group h-full flex flex-col shadow-sm">
+                                  <div className="flex items-start gap-3 mb-4">
+                                    <div className="w-10 h-10 flex-shrink-0">
+                                      <ToolImage 
+                                        src={tool.logo}
+                                        alt={`${tool.name} logo`}
+                                        name={tool.name}
+                                        size="md"
+                                        className="w-full h-full rounded-lg shadow-sm"
+                                      />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2 leading-tight">
+                                        {tool.name}
+                                      </h3>
+                                      <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                                        {tool.tagline}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="mt-auto pt-4 flex items-center justify-between">
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 shadow-sm">
+                                      {formatCategoryName(tool.categories.split(',')[0].trim())}
+                                    </span>
+                                    <motion.div 
+                                      className="text-orange-600 hover:text-orange-700 text-sm font-medium flex items-center gap-1"
+                                      whileHover={{ x: 2 }}
+                                      transition={{ duration: 0.2 }}
+                                    >
+                                      Visit Website
+                                      <ExternalLink className="w-3 h-3" />
+                                    </motion.div>
+                                  </div>
+                                </div>
+                              </Link>
+                            </ScrollAnimatedCard>
+                          ))}
+                        </motion.div>
+                      )}
+                    </div>
+                  ) : (
+                    <motion.div
+                      className="text-center py-16 bg-white rounded-xl shadow-sm border border-gray-200"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <p className="text-lg text-gray-500 mb-2">No tools found</p>
+                      <p className="text-sm text-gray-400">Try adjusting your search or filter criteria</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Email Subscription Section - Footer */}
+        <div className="bg-gray-50 border-t border-gray-200 shadow-inner">
+          <EmailSubscription className="shadow-sm" />
+        </div>
+
+        {/* Submission Form Modal */}
+        <SubmissionForm 
+          isOpen={showSubmissionForm} 
+          onClose={() => setShowSubmissionForm(false)} 
+        />
       </motion.div>
     </div>
   )

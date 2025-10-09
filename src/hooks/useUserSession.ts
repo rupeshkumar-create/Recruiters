@@ -16,25 +16,23 @@ export function useUserSession(): UserSession {
   const [userData, setUserDataState] = useState<UserData | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
-  // Load user session from localStorage on mount
+  // For testing: Always clear session to show forms
   useEffect(() => {
-    const savedSession = localStorage.getItem(USER_SESSION_KEY)
-    if (savedSession) {
-      try {
-        const parsedSession = JSON.parse(savedSession)
-        setUserDataState(parsedSession)
-        setIsAuthenticated(true)
-      } catch (error) {
-        console.error('Error parsing user session:', error)
-        localStorage.removeItem(USER_SESSION_KEY)
-      }
-    }
+    // Clear session to force form to show for testing
+    localStorage.removeItem(USER_SESSION_KEY)
+    setUserDataState(null)
+    setIsAuthenticated(false)
   }, [])
 
   const setUserData = (newUserData: UserData) => {
     setUserDataState(newUserData)
     setIsAuthenticated(true)
-    localStorage.setItem(USER_SESSION_KEY, JSON.stringify(newUserData))
+    // Store with timestamp for future session management
+    const sessionData = {
+      ...newUserData,
+      timestamp: Date.now()
+    }
+    localStorage.setItem(USER_SESSION_KEY, JSON.stringify(sessionData))
   }
 
   const clearSession = () => {

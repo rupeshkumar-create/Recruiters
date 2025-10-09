@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Upload } from 'lucide-react'
-import { getUniqueCategories } from '../lib/data'
+
 
 interface SubmissionFormProps {
   isOpen: boolean
@@ -31,9 +31,26 @@ export default function SubmissionForm({ isOpen, onClose }: SubmissionFormProps)
 
   useEffect(() => {
     if (isOpen) {
-      setAvailableCategories(getUniqueCategories())
+      loadCategories()
     }
   }, [isOpen])
+
+  const loadCategories = async () => {
+    try {
+      const response = await fetch('/api/categories?active=true')
+      if (response.ok) {
+        const categories = await response.json()
+        setAvailableCategories(categories.map((cat: any) => cat.name))
+      } else {
+        console.error('Failed to load categories')
+        // Fallback to empty array or show error
+        setAvailableCategories([])
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error)
+      setAvailableCategories([])
+    }
+  }
 
 
 
@@ -121,7 +138,7 @@ export default function SubmissionForm({ isOpen, onClose }: SubmissionFormProps)
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-100">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-100">
         <div className="p-8">
           <div className="flex items-center justify-between mb-8">
             <div>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Functionality Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-step {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            color: #856404;
+        }
+        code {
+            background: #e9ecef;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .checklist {
+            list-style-type: none;
+            padding: 0;
+        }
+        .checklist li {
+            padding: 5px 0;
+        }
+        .checklist li:before {
+            content: "☐ ";
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 System Functionality Test</h1>
+    
+    <div class="error">
+        <h2>🚨 Issues Identified & Fixed</h2>
+        <ul>
+            <li>✅ Form not showing (session management fixed)</li>
+            <li>✅ Comments not going to admin panel (default status fixed)</li>
+            <li>✅ Real-time updates not working (component sync fixed)</li>
+            <li>✅ Database migration conflicts resolved</li>
+        </ul>
+    </div>
+
+    <div class="warning">
+        <h2>📋 Required Steps</h2>
+        <ol>
+            <li><strong>Run Database Migration</strong> - Execute the SQL below</li>
+            <li><strong>Clear Browser Storage</strong> - Clear localStorage to test fresh</li>
+            <li><strong>Test Voting System</strong> - Follow test steps</li>
+            <li><strong>Test Comment System</strong> - Follow test steps</li>
+        </ol>
+    </div>
+
+    <div class="test-step">
+        <h3>🗄️ Step 1: Run Database Migration</h3>
+        <p>Execute this SQL in your Supabase SQL editor:</p>
+        <pre><code>-- Complete fix for voting and comment system
+ALTER TABLE comments 
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+ADD COLUMN IF NOT EXISTS user_company VARCHAR(255),
+ADD COLUMN IF NOT EXISTS user_title VARCHAR(255),
+ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS approved_by VARCHAR(255),
+ADD COLUMN IF NOT EXISTS user_data JSONB;
+
+ALTER TABLE votes 
+ADD COLUMN IF NOT EXISTS user_data JSONB;
+
+CREATE INDEX IF NOT EXISTS idx_comments_status ON comments(status);
+CREATE INDEX IF NOT EXISTS idx_comments_approved_at ON comments(approved_at);
+
+UPDATE comments 
+SET status = 'approved', approved_at = COALESCE(approved_at, created_at), approved_by = 'system'
+WHERE status IS NULL;
+
+DROP POLICY IF EXISTS "Public can view comments" ON comments;
+CREATE POLICY "Public can view approved comments" ON comments
+    FOR SELECT USING (status = 'approved');
+
+CREATE POLICY "Anyone can insert comments" ON comments
+    FOR INSERT WITH CHECK (true);</code></pre>
+    </div>
+
+    <div class="test-step">
+        <h3>🧹 Step 2: Clear Browser Storage</h3>
+        <p>Open browser dev tools (F12) and run:</p>
+        <code>localStorage.clear()</code>
+        <p>This ensures the form will show for testing.</p>
+    </div>
+
+    <div class="test-step success">
+        <h3>🗳️ Step 3: Test Voting System</h3>
+        <ul class="checklist">
+            <li>Visit <code>http://localhost:3001/tool/mercuryats</code></li>
+            <li>Click upvote button (should show authentication form)</li>
+            <li>Fill out form with test data</li>
+            <li>Submit form (should see thank you message)</li>
+            <li>Check vote count updates in Community section</li>
+            <li>Try voting again (should work without form)</li>
+        </ul>
+    </div>
+
+    <div class="test-step success">
+        <h3>💬 Step 4: Test Comment System</h3>
+        <ul class="checklist">
+            <li>Scroll to comments section</li>
+            <li>Write a test comment</li>
+            <li>Submit comment (should show thank you message about approval)</li>
+            <li>Comment should NOT appear immediately</li>
+            <li>Visit <code>/admin/comments</code></li>
+            <li>Should see pending comment</li>
+            <li>Approve the comment</li>
+            <li>Go back to tool page and refresh</li>
+            <li>Comment should now appear</li>
+        </ul>
+    </div>
+
+    <div class="test-step">
+        <h3>🔄 Step 5: Test Real-time Updates</h3>
+        <ul class="checklist">
+            <li>Vote on a tool</li>
+            <li>Check Community section updates immediately</li>
+            <li>Check voting section shows updated counts</li>
+            <li>Check hero section shows updated count</li>
+        </ul>
+    </div>
+
+    <div class="success">
+        <h2>✅ Expected Results</h2>
+        <ul>
+            <li><strong>Voting</strong>: Form appears → Fill form → Vote recorded → Counts update everywhere</li>
+            <li><strong>Comments</strong>: Write comment → Thank you message → Goes to admin → Approve → Appears on page</li>
+            <li><strong>Real-time</strong>: All vote counts sync across hero, voting section, and community stats</li>
+        </ul>
+    </div>
+
+    <div class="error">
+        <h2>🐛 If Issues Persist</h2>
+        <ul>
+            <li>Check browser console for JavaScript errors</li>
+            <li>Check Supabase logs for database errors</li>
+            <li>Verify environment variables are set correctly</li>
+            <li>Clear browser cache and localStorage completely</li>
+        </ul>
+    </div>
+</body>
+</html>

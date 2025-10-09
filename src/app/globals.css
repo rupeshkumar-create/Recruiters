@@ -3,9 +3,23 @@
 @tailwind utilities;
 
 /* Line clamp utilities */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -119,4 +133,9 @@
 
 .orange-bg-light {
   background-color: #f5f5f5;
+}
+
+/* Grid improvements */
+.auto-rows-fr {
+  grid-auto-rows: 1fr;
 }

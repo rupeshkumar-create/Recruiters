@@ -11,6 +11,7 @@ interface VotingSectionProps {
   toolName: string
   initialUpvotes?: number
   initialDownvotes?: number
+  onVoteChange?: (upvotes: number, downvotes: number) => void
 }
 
 interface Vote {
@@ -23,7 +24,8 @@ export default function VotingSection({
   toolId, 
   toolName, 
   initialUpvotes = 0, 
-  initialDownvotes = 0 
+  initialDownvotes = 0,
+  onVoteChange
 }: VotingSectionProps) {
   const [upvotes, setUpvotes] = useState(initialUpvotes)
   const [downvotes, setDownvotes] = useState(initialDownvotes)
@@ -31,11 +33,18 @@ export default function VotingSection({
   const [pendingVoteType, setPendingVoteType] = useState<'up' | 'down' | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAuthForm, setShowAuthForm] = useState(false)
-  const { userData, isAuthenticated, setUserData } = useUserSession()
+  const [showThankYou, setShowThankYou] = useState(false)
+  const { userData, isAuthenticated, setUserData, clearSession } = useUserSession()
 
   useEffect(() => {
     loadVotes()
-  }, [toolId, userData])
+  }, [toolId])
+
+  // Update local state when props change
+  useEffect(() => {
+    setUpvotes(initialUpvotes)
+    setDownvotes(initialDownvotes)
+  }, [initialUpvotes, initialDownvotes])
 
   const loadVotes = async () => {
     try {
@@ -45,6 +54,11 @@ export default function VotingSection({
         const data = await response.json()
         setUpvotes(data.upvotes)
         setDownvotes(data.downvotes)
+        
+        // Notify parent component of vote changes
+        if (onVoteChange) {
+          onVoteChange(data.upvotes, data.downvotes)
+        }
         
         // Check if current user has voted
         if (userData?.email) {
@@ -66,14 +80,18 @@ export default function VotingSection({
 
 
   const handleVoteClick = (voteType: 'up' | 'down') => {
+    console.log('Vote clicked:', { voteType, userVote, isAuthenticated, userData })
+    
     // If user already voted for the same type, undo the vote
     if (userVote === voteType) {
+      console.log('Undoing existing vote')
       handleUndoVote()
       return
     }
     
     // If user voted for different type, change the vote
     if (userVote && userVote !== voteType) {
+      console.log('Changing vote type')
       handleChangeVote(voteType)
       return
     }
@@ -81,10 +99,12 @@ export default function VotingSection({
     // If user hasn't voted yet
     if (!isAuthenticated || !userData) {
       // Show auth form
+      console.log('User not authenticated, showing auth form')
       setPendingVoteType(voteType)
       setShowAuthForm(true)
     } else {
       // User is already authenticated, submit vote directly
+      console.log('User authenticated, submitting vote directly')
       handleDirectVote(voteType)
     }
   }
@@ -99,12 +119,17 @@ export default function VotingSection({
       
       if (response.ok) {
         // Update local state
-        if (userVote === 'up') {
-          setUpvotes(prev => Math.max(0, prev - 1))
-        } else {
-          setDownvotes(prev => Math.max(0, prev - 1))
-        }
+        const newUpvotes = userVote === 'up' ? Math.max(0, upvotes - 1) : upvotes
+        const newDownvotes = userVote === 'down' ? Math.max(0, downvotes - 1) : downvotes
+        
+        setUpvotes(newUpvotes)
+        setDownvotes(newDownvotes)
         setUserVote(null)
+        
+        // Notify parent component
+        if (onVoteChange) {
+          onVoteChange(newUpvotes, newDownvotes)
+        }
       }
     } catch (error) {
       console.error('Error removing vote:', error)
@@ -131,14 +156,25 @@ export default function VotingSection({
       
       if (response.ok) {
         // Update local state
+        let newUpvotes = upvotes
+        let newDownvotes = downvotes
+        
         if (userVote === 'up' && newVoteType === 'down') {
-          setUpvotes(prev => Math.max(0, prev - 1))
-          setDownvotes(prev => prev + 1)
+          newUpvotes = Math.max(0, upvotes - 1)
+          newDownvotes = downvotes + 1
         } else if (userVote === 'down' && newVoteType === 'up') {
-          setDownvotes(prev => Math.max(0, prev - 1))
-          setUpvotes(prev => prev + 1)
+          newDownvotes = Math.max(0, downvotes - 1)
+          newUpvotes = upvotes + 1
         }
+        
+        setUpvotes(newUpvotes)
+        setDownvotes(newDownvotes)
         setUserVote(newVoteType)
+        
+        // Notify parent component
+        if (onVoteChange) {
+          onVoteChange(newUpvotes, newDownvotes)
+        }
       }
     } catch (error) {
       console.error('Error changing vote:', error)
@@ -159,18 +195,20 @@ export default function VotingSection({
            userEmail: userData.email,
            userName: `${userData.firstName} ${userData.lastName}`,
            voteType,
-           userData
+           userData: {
+             ...userData,
+             company: userData.company,
+             title: userData.title
+           }
          })
       })
       
       if (response.ok) {
-        // Update local state
-        if (voteType === 'up') {
-          setUpvotes(prev => prev + 1)
-        } else {
-          setDownvotes(prev => prev + 1)
-        }
-        setUserVote(voteType)
+        console.log('Vote submitted successfully to API')
+        // UI already updated optimistically, no need to update again
+      } else {
+        console.error('Failed to submit vote to API, but UI already updated')
+        // Don't revert UI changes to keep user experience smooth
       }
     } catch (error) {
       console.error('Error submitting vote:', error)
@@ -186,8 +224,31 @@ export default function VotingSection({
     setUserData(userData)
     setShowAuthForm(false)
     
-    // Submit vote directly after authentication
+    // Show success message instantly
+    setShowThankYou(true)
+    setTimeout(() => setShowThankYou(false), 5000)
+    
+    // Update UI optimistically
+    const newUpvotes = pendingVoteType === 'up' ? upvotes + 1 : upvotes
+    const newDownvotes = pendingVoteType === 'down' ? downvotes + 1 : downvotes
+    
+    setUpvotes(newUpvotes)
+    setDownvotes(newDownvotes)
+    setUserVote(pendingVoteType)
+    
+    // Notify parent component
+    if (onVoteChange) {
+      onVoteChange(newUpvotes, newDownvotes)
+    }
+    
+    // Submit vote to API in background
     handleDirectVote(pendingVoteType)
+    
+    // Clear user session so they need to fill form again next time
+    setTimeout(() => {
+      clearSession()
+      console.log('User session cleared after vote')
+    }, 1000)
   }
 
   const handleCloseAuthForm = () => {
@@ -238,10 +299,23 @@ export default function VotingSection({
           </motion.button>
         </div>
         
-        {userVote && (
+        {showThankYou && (
+          <motion.div 
+            className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
+            <p className="text-sm text-green-800 font-medium">
+              🎉 Thank you for your vote! Your feedback helps other users discover great tools.
+            </p>
+          </motion.div>
+        )}
+        
+        {userVote && !showThankYou && (
           <div className="mt-3">
             <p className="text-sm muted-text-light">
-              Thank you for your feedback! You rated this tool as {userVote === 'up' ? 'helpful' : 'not helpful'}.
+              You rated this tool as {userVote === 'up' ? 'helpful' : 'not helpful'}.
             </p>
             <button
               onClick={() => handleUndoVote()}
