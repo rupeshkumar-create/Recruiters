@@ -96,8 +96,11 @@ export default function HorizontalFilter({
   // Check if this is the hero version (transparent background)
   const isHeroVersion = className.includes('bg-transparent')
   
-  // Create display categories with "All Tools" as first item
-  const displayCategories = ['All Tools', ...categories.filter(cat => cat !== 'All')]
+  // Create display categories with "All Tools" as first item, filtering out categories with 0 tools
+  const displayCategories = ['All Tools', ...categories.filter(cat => {
+    if (cat === 'All') return false
+    return getCategoryCount(cat) > 0
+  })]
   
   // Check if we should show the separate clear filter option (2 or more categories selected, excluding "All")
   const shouldShowClearOption = (() => {

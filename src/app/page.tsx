@@ -187,6 +187,23 @@ export default function HomePage() {
   const [categories, setCategories] = useState<string[]>(['All'])
   const [categoriesLoaded, setCategoriesLoaded] = useState(false)
   
+  // Helper function to get categories that have tools
+  const getCategoriesWithTools = (toolsList: any[]) => {
+    const categorySet = new Set<string>()
+    toolsList.filter(tool => !tool.hidden).forEach(tool => {
+      if (tool.categories) {
+        tool.categories.split(',').forEach((cat: string) => {
+          const trimmed = cat.trim()
+          if (trimmed) {
+            const formatted = formatCategoryName(trimmed)
+            categorySet.add(formatted)
+          }
+        })
+      }
+    })
+    return Array.from(categorySet).sort()
+  }
+  
   useEffect(() => {
     // Only load categories once, not dependent on tools
     if (categoriesLoaded) return
@@ -197,7 +214,18 @@ export default function HomePage() {
         if (response.ok) {
           const categoriesData = await response.json()
           const categoryNames = categoriesData.map((cat: any) => cat.name)
-          setCategories(['All', ...categoryNames.sort()])
+          
+          // Filter categories to only include those that have tools
+          if (tools.length > 0) {
+            const categoriesWithTools = getCategoriesWithTools(tools)
+            const filteredCategories = categoryNames.filter((cat: string) => 
+              categoriesWithTools.includes(cat)
+            )
+            setCategories(['All', ...filteredCategories.sort()])
+          } else {
+            // If no tools loaded yet, use all categories for now
+            setCategories(['All', ...categoryNames.sort()])
+          }
           setCategoriesLoaded(true)
         } else {
           console.error('Failed to load categories, will use fallback when tools load')
@@ -210,24 +238,21 @@ export default function HomePage() {
     }
 
     loadCategories()
-  }, [categoriesLoaded])
+  }, [categoriesLoaded, tools])
+
+  // Update categories when tools change to filter out empty categories
+  useEffect(() => {
+    if (categoriesLoaded && tools.length > 0) {
+      const categoriesWithTools = getCategoriesWithTools(tools)
+      setCategories(['All', ...categoriesWithTools])
+    }
+  }, [tools, categoriesLoaded])
 
   // Fallback: Extract categories from tools if API failed and we have tools
   useEffect(() => {
     if (!categoriesLoaded && tools.length > 0) {
-      const categorySet = new Set<string>()
-      tools.forEach(tool => {
-        if (tool.categories) {
-          tool.categories.split(',').forEach((cat: string) => {
-            const trimmed = cat.trim()
-            if (trimmed) {
-              const formatted = formatCategoryName(trimmed)
-              categorySet.add(formatted)
-            }
-          })
-        }
-      })
-      setCategories(['All', ...Array.from(categorySet).sort()])
+      const categoriesWithTools = getCategoriesWithTools(tools)
+      setCategories(['All', ...categoriesWithTools])
       setCategoriesLoaded(true)
     }
   }, [tools, categoriesLoaded])

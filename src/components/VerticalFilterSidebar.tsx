@@ -96,8 +96,11 @@ export default function VerticalFilterSidebar({
     ).length
   }
 
-  // Create display categories with "All Tools" as first item
-  const displayCategories = ['All Tools', ...categories.filter(cat => cat !== 'All')]
+  // Create display categories with "All Tools" as first item, filtering out categories with 0 tools
+  const displayCategories = ['All Tools', ...categories.filter(cat => {
+    if (cat === 'All') return false
+    return getCategoryCount(cat) > 0
+  })]
   
   // Check if there are active filters (not just "All")
   const hasActiveFilters = selectedCategories.length > 0 && !selectedCategories.includes('All')
