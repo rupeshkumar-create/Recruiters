@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Eye, Check, X, Lock, Star, Settings, Edit3, FolderPlus, Plus, MessageCircle, ThumbsUp } from 'lucide-react'
+import { Eye, Check, X, Lock, Star, Settings, Edit3, FolderPlus, Plus, MessageCircle, ThumbsUp, BarChart3 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -125,12 +125,8 @@ export default function AdminPage() {
     
     try {
       console.log('Rejecting submission:', id)
-      const response = await fetch(`/api/submissions`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id }),
+      const response = await fetch(`/api/submissions?id=${id}`, {
+        method: 'DELETE'
       })
       
       const responseText = await response.text()
@@ -379,6 +375,23 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </Link>
+
+          <Link href="/admin/analytics">
+            <Card className="h-48 hover:shadow-xl transition-all duration-300 cursor-pointer border-0 bg-gradient-to-br from-white via-cyan-50/30 to-blue-100/20 hover:from-cyan-50/50 hover:to-blue-100/30 group">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl shadow-sm group-hover:from-cyan-600 group-hover:to-blue-600 transition-all">
+                    <BarChart3 className="w-5 h-5 text-white" />
+                  </div>
+                  <CardTitle className="text-lg font-bold text-slate-800">Analytics</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0 flex flex-col justify-between h-full">
+                <CardDescription className="mb-4 text-sm text-slate-600">View tool performance, clicks, shares, and user engagement</CardDescription>
+                <div className="text-sm bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent font-bold group-hover:from-cyan-700 group-hover:to-blue-700 transition-all">View Analytics →</div>
+              </CardContent>
+            </Card>
+          </Link>
           </div>
 
           <Card className="border-0 shadow-xl bg-white/95 backdrop-blur-sm rounded-3xl overflow-hidden">
@@ -388,9 +401,19 @@ export default function AdminPage() {
                   <CardTitle className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-900 bg-clip-text text-transparent">Pending Submissions</CardTitle>
                   <CardDescription className="mt-2 text-slate-600">Review and approve new tool submissions</CardDescription>
                 </div>
-                <Button onClick={loadSubmissions} variant="outline" size="sm" className="shrink-0 border-slate-300 hover:bg-slate-50 hover:border-slate-400 rounded-xl font-medium transition-all duration-200">
-                  Refresh Submissions
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={loadSubmissions} variant="outline" size="sm" className="shrink-0 border-slate-300 hover:bg-slate-50 hover:border-slate-400 rounded-xl font-medium transition-all duration-200">
+                    Refresh Submissions
+                  </Button>
+                  <Button 
+                    onClick={() => window.dispatchEvent(new CustomEvent('refreshTools'))} 
+                    variant="outline" 
+                    size="sm" 
+                    className="shrink-0 border-slate-300 hover:bg-slate-50 hover:border-slate-400 rounded-xl font-medium transition-all duration-200"
+                  >
+                    Refresh All Data
+                  </Button>
+                </div>
               </div>
             </CardHeader>
           <CardContent className="pt-0">

@@ -12,6 +12,7 @@ import SubmissionForm from '../components/SubmissionForm'
 import EmailSubscription from '../components/EmailSubscription'
 import ToolImage from '../components/ToolImage'
 import { csvTools } from '../lib/data'
+import { trackToolClick } from '../lib/analytics'
 
 
 const containerVariants = {
@@ -88,7 +89,7 @@ export default function HomePage() {
   const [showSubmissionForm, setShowSubmissionForm] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
-  const [tools, setTools] = useState<any[]>(csvTools) // Initialize with csvTools to prevent hydration mismatch
+  const [tools, setTools] = useState<any[]>(csvTools) // Initialize with csvTools
   const [initialToolsLoaded, setInitialToolsLoaded] = useState(false)
 
   
@@ -97,74 +98,50 @@ export default function HomePage() {
 
   // Ensure page starts at top on load
   useEffect(() => {
-    // Force scroll to top immediately
+    // Force scroll to top once on initial load
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-    
-    // Also set it after a small delay to ensure it sticks
-    const timer = setTimeout(() => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-    }, 100)
-    
-    return () => clearTimeout(timer)
   }, [])
 
   // Load approved tools from Supabase API on component mount
   useEffect(() => {
-    
     const fetchTools = async () => {
       try {
         const response = await fetch('/api/tools')
         if (response.ok) {
           const toolsData = await response.json()
           setTools(toolsData)
-          setInitialToolsLoaded(true)
         } else {
           console.error('Failed to fetch tools from API, using CSV fallback')
-          // Keep csvTools as fallback when API fails
+          // Use csvTools as fallback when API fails
           setTools(csvTools)
-          setInitialToolsLoaded(true)
         }
       } catch (error) {
         console.error('Error fetching tools:', error, 'using CSV fallback')
-        // Keep csvTools as fallback when API fails
+        // Use csvTools as fallback when API fails
         setTools(csvTools)
+      } finally {
         setInitialToolsLoaded(true)
       }
     }
     
     fetchTools()
     
-    // Set up polling to refresh data every 10 minutes (further reduced frequency)
-    const interval = setInterval(fetchTools, 600000)
-    
-    // Track last focus time to prevent excessive refreshes
-    let lastFocusRefresh = 0
-    
-    // Refresh data when window regains focus (user comes back from admin panel)
-    const handleFocus = () => {
-      const now = Date.now()
-      // Only refresh if it's been more than 30 seconds since last focus refresh
-      if (now - lastFocusRefresh > 30000) {
-        lastFocusRefresh = now
-        fetchTools()
-      }
-    }
-    
-    // Listen for custom refresh events from admin panel
+    // Listen for refresh events from admin panel
     const handleRefreshTools = () => {
+      console.log('Refreshing tools data...')
       fetchTools()
+      // Force re-render of all tool images
+      setInitialToolsLoaded(false)
+      setTimeout(() => setInitialToolsLoaded(true), 100)
     }
     
-    window.addEventListener('focus', handleFocus)
     window.addEventListener('refreshTools', handleRefreshTools)
     
     // Cleanup
     return () => {
-      clearInterval(interval)
-      window.removeEventListener('focus', handleFocus)
       window.removeEventListener('refreshTools', handleRefreshTools)
     }
-  }, [])
+  }, []) // Remove dependency to prevent re-fetching
 
 
 
@@ -365,39 +342,15 @@ export default function HomePage() {
   const previousCategoriesRef = useRef<string[]>(['All'])
   
   useEffect(() => {
-    // Mark initial load as complete after a short delay
-    const timer = setTimeout(() => {
-      setIsInitialLoad(false)
-    }, 2000) // Increased delay to prevent premature scrolling
-    
-    return () => clearTimeout(timer)
+    // Mark initial load as complete immediately
+    setIsInitialLoad(false)
   }, [])
   
-  // Auto-scroll to tools section only when categories actually change (not on initial load)
+  // Track category changes without auto-scrolling
   useEffect(() => {
-    // Skip if it's initial load
-    if (isInitialLoad) {
-      previousCategoriesRef.current = selectedCategories
-      return
-    }
-    
-    // Skip if categories haven't actually changed
-    if (JSON.stringify(selectedCategories) === JSON.stringify(previousCategoriesRef.current)) {
-      return
-    }
-    
-    // Only scroll when user actively changes categories and it's not the initial "All" selection
-    if (selectedCategories.length > 0 && !selectedCategories.includes('All')) {
-      const toolsSection = document.getElementById('tools-section')
-      if (toolsSection) {
-        const yOffset = -120 // Offset to account for sticky header
-        const y = toolsSection.getBoundingClientRect().top + window.pageYOffset + yOffset
-        window.scrollTo({ top: y, behavior: 'smooth' })
-      }
-    }
-    
+    // Update previous categories reference
     previousCategoriesRef.current = selectedCategories
-  }, [selectedCategories, isInitialLoad])
+  }, [selectedCategories])
 
 
 
@@ -564,8 +517,12 @@ export default function HomePage() {
                           transition={{ duration: 0.3, delay: 0.2 }}
                         >
                           {lazyTools.map((tool, index) => (
-                            <ScrollAnimatedCard key={tool.id} index={index}>
-                              <Link href={`/tool/${tool.slug}`} className="block h-full">
+                            <ScrollAnimatedCard key={`${tool.id}-${tool.logo}-${initialToolsLoaded}`} index={index}>
+                              <Link 
+                                href={`/tool/${tool.slug}`} 
+                                className="block h-full"
+                                onClick={() => trackToolClick(tool.id, tool.name)}
+                              >
                                 <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 group h-full flex flex-col shadow-sm">
                                   <div className="flex items-start gap-3 mb-4">
                                     <div className="w-10 h-10 flex-shrink-0">

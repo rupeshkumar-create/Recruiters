@@ -9,8 +9,16 @@ import { useUserSession } from '../hooks/useUserSession'
 interface Comment {
   id: string
   content: string
-  userData: UserData
-  timestamp: number
+  userData?: UserData
+  timestamp?: number
+  // Database fields
+  user_name?: string
+  user_email?: string
+  user_company?: string
+  user_title?: string
+  created_at?: string
+  updated_at?: string
+  status?: string
 }
 
 interface CommentSectionProps {
@@ -329,7 +337,7 @@ export default function CommentSection({ toolId, toolName, onCommentCountChange 
                         <div className="flex items-center gap-2 mb-2">
                           <Calendar className="w-3 h-3 text-neutral-400" />
                           <span className="text-xs muted-text-light">
-                            {comment.created_at ? formatDate(new Date(comment.created_at).getTime()) : formatDate(comment.timestamp)}
+                            {comment.created_at ? formatDate(new Date(comment.created_at).getTime()) : formatDate(comment.timestamp || Date.now())}
                           </span>
                         </div>
                         

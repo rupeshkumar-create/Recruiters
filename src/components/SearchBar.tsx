@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import ToolImage from './ToolImage'
 
 interface SearchBarProps {
   searchTerm: string
@@ -102,7 +103,7 @@ export default function SearchBar({
           >
             {suggestions.map((tool, index) => (
               <motion.div
-                key={tool.id}
+                key={`${tool.id}-${tool.logo}`}
                 className={`px-4 py-3 cursor-pointer transition-all duration-200 flex items-center gap-3 ${
                   index === selectedSuggestionIndex
                     ? 'bg-orange-50 border-l-4 border-orange-500'
@@ -116,26 +117,13 @@ export default function SearchBar({
                 whileHover={{ x: 4 }}
                 transition={{ duration: 0.1 }}
               >
-                <div className="w-8 h-8 flex-shrink-0 bg-gray-50 rounded-lg p-1.5">
-                  <img 
-                    src={tool.logo.includes('linkedin.com') ? `https://images.weserv.nl/?url=${encodeURIComponent(tool.logo)}&w=32&h=32&fit=contain&bg=white` : tool.logo}
-                    alt={`${tool.name} logo`}
-                    className="w-full h-full object-contain rounded"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      if (target.src.includes('weserv.nl')) {
-                        target.src = tool.logo;
-                        return;
-                      }
-                      target.style.display = 'none';
-                      const fallback = target.nextElementSibling as HTMLElement;
-                      if (fallback) fallback.style.display = 'flex';
-                    }}
-                  />
-                  <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white font-bold text-xs hidden">
-                    {tool.name.charAt(0).toUpperCase()}
-                  </div>
-                </div>
+                <ToolImage
+                  src={tool.logo}
+                  alt={`${tool.name} logo`}
+                  name={tool.name}
+                  size="sm"
+                  className="bg-gray-50 rounded-lg p-1"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm muted-text truncate text-left">{tool.name}</div>
                   <div className="text-xs muted-text-light truncate text-left">{tool.tagline}</div>

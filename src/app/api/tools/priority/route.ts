@@ -24,20 +24,31 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Maximum 15 tools can have priority order' }, { status: 400 });
     }
 
-    // Update each tool's priority order
-    const updatePromises = toolPriorities.map(async ({ id, priority_order }) => {
-      const { error } = await supabase
-        .from('tools')
-        .update({ priority_order })
-        .eq('id', id);
-      
-      if (error) {
-        console.error(`Error updating tool ${id}:`, error);
-        throw error;
-      }
-    });
+    // First, clear all existing priority orders to avoid unique constraint conflicts
+    const { error: clearError } = await supabase
+      .from('tools')
+      .update({ priority_order: null })
+      .not('priority_order', 'is', null);
 
-    await Promise.all(updatePromises);
+    if (clearError) {
+      console.error('Error clearing priority orders:', clearError);
+      throw clearError;
+    }
+
+    // Then update each tool's priority order sequentially to avoid conflicts
+    for (const { id, priority_order } of toolPriorities) {
+      if (priority_order !== null && priority_order !== undefined) {
+        const { error } = await supabase
+          .from('tools')
+          .update({ priority_order })
+          .eq('id', id);
+        
+        if (error) {
+          console.error(`Error updating tool ${id}:`, error);
+          throw error;
+        }
+      }
+    }
 
     return NextResponse.json({ message: 'Priority order updated successfully' });
   } catch (error) {
@@ -71,7 +82,7 @@ export async function GET(request: NextRequest) {
       `)
       .eq('approved', true)
       .eq('hidden', false)
-      .order('priority_order', { ascending: true, nullsLast: true })
+      .order('priority_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
 
     if (error) {

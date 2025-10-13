@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       query = query.or(`name.ilike.%${search}%,tagline.ilike.%${search}%,content.ilike.%${search}%`);
     }
 
-    const { data: tools, error } = await query.order('priority_order', { ascending: true, nullsLast: true }).order('created_at', { ascending: false });
+    const { data: tools, error } = await query.order('priority_order', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching tools:', error);

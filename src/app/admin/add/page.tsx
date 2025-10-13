@@ -13,6 +13,7 @@ import { Checkbox } from '../../../components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../components/ui/dialog'
 import { Card, CardContent } from '../../../components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import LogoUpload from '../../../components/LogoUpload'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -67,10 +68,7 @@ export default function AddToolPage() {
       newErrors.url = 'Please enter a valid URL starting with http:// or https://'
     }
     
-    // Logo URL validation
-    if (formData.logo && !formData.logo.match(/^https?:\/\/.+/)) {
-      newErrors.logo = 'Please enter a valid logo URL starting with http:// or https://'
-    }
+    // Logo validation - no longer needed as upload handles this
     
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -101,24 +99,56 @@ export default function AddToolPage() {
         hidden: formData.hidden
       }
       
-      const success = addTool(newTool)
-      
-      if (success) {
-        setShowSuccess(true)
-        // Reset form
-        setFormData({
-          name: '', 
-          logo: '', 
-          tagline: '', 
-          description: '', 
-          categories: '', 
-          url: '',
-          featured: false,
-          hidden: false
+      // Submit to API instead of local storage
+      try {
+        const response = await fetch('/api/tools', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: formData.name.trim(),
+            url: formData.url.trim(),
+            tagline: formData.tagline.trim(),
+            content: formData.description.trim() || formData.tagline.trim(),
+            description: formData.description.trim(),
+            categories: formData.categories.split(',').map(c => c.trim()).filter(Boolean),
+            logo: formData.logo.trim() || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=F26B21&color=fff&size=64`,
+            featured: formData.featured,
+            hidden: formData.hidden
+          }),
         })
-        setErrors({})
-        // Trigger refresh on main page
-        window.dispatchEvent(new CustomEvent('refreshTools'))
+
+        if (response.ok) {
+          setShowSuccess(true)
+          // Reset form
+          setFormData({
+            name: '', 
+            logo: '', 
+            tagline: '', 
+            description: '', 
+            categories: '', 
+            url: '',
+            featured: false,
+            hidden: false
+          })
+          setErrors({})
+          
+          // Trigger comprehensive refresh
+          window.dispatchEvent(new CustomEvent('refreshTools'))
+          
+          // Also refresh after a short delay to ensure data is updated
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('refreshTools'))
+          }, 1000)
+        } else {
+          const errorData = await response.json()
+          console.error('Failed to add tool:', errorData)
+          alert('Failed to add tool. Please try again.')
+        }
+      } catch (error) {
+        console.error('Error adding tool:', error)
+        alert('Error adding tool. Please try again.')
       }
     } catch (error) {
       console.error('Error adding tool:', error)
@@ -235,22 +265,19 @@ export default function AddToolPage() {
                   <p className="text-gray-500 text-sm mt-1">Select the most appropriate category for this tool</p>
                 </div>
                 
-                {/* Logo URL */}
-                <div>
-                  <Label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <Image className="w-4 h-4" />
-                    Logo URL (Optional)
-                  </Label>
-                  <Input
-                    type="url"
-                    value={formData.logo}
-                    onChange={(e) => handleInputChange('logo', e.target.value)}
-                    placeholder="https://example.com/logo.png"
-                    className={errors.logo ? 'border-red-500' : ''}
-                  />
-                  {errors.logo && <p className="text-red-500 text-sm mt-1">{errors.logo}</p>}
-                  <p className="text-gray-500 text-sm mt-1">If not provided, a default logo will be generated</p>
-                </div>
+                {/* Logo Upload */}
+                <LogoUpload
+                  currentLogo={formData.logo}
+                  onLogoChange={(logoUrl) => {
+                    handleInputChange('logo', logoUrl)
+                    // Trigger refresh event for real-time updates
+                    if (typeof window !== 'undefined') {
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('refreshTools'))
+                      }, 500)
+                    }
+                  }}
+                />
                 
                 {/* Full Description */}
                 <div>

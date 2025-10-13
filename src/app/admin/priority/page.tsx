@@ -18,13 +18,41 @@ export default function PriorityManagementPage() {
   const [tools, setTools] = useState<Tool[]>([])
   const [priorityTools, setPriorityTools] = useState<Tool[]>([])
   const [availableTools, setAvailableTools] = useState<Tool[]>([])
+  const [filteredAvailableTools, setFilteredAvailableTools] = useState<Tool[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   useEffect(() => {
     loadTools()
+    
+    // Listen for refresh events
+    const handleRefresh = () => {
+      console.log('Refreshing priority tools...')
+      loadTools()
+    }
+    
+    window.addEventListener('refreshTools', handleRefresh)
+    
+    return () => {
+      window.removeEventListener('refreshTools', handleRefresh)
+    }
   }, [])
+
+  // Filter available tools based on search term
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredAvailableTools(availableTools)
+    } else {
+      const filtered = availableTools.filter(tool =>
+        tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tool.tagline.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tool.categories.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      setFilteredAvailableTools(filtered)
+    }
+  }, [searchTerm, availableTools])
 
   const loadTools = async () => {
     try {
@@ -40,6 +68,7 @@ export default function PriorityManagementPage() {
         
         setPriorityTools(priority)
         setAvailableTools(available)
+        setFilteredAvailableTools(available)
       } else {
         showMessage('error', 'Failed to load tools')
       }
@@ -126,8 +155,16 @@ export default function PriorityManagementPage() {
           window.dispatchEvent(new CustomEvent('refreshTools'))
         }
       } else {
-        const error = await response.json()
-        showMessage('error', error.message || 'Failed to save priorities')
+        const errorText = await response.text()
+        let errorMessage = 'Failed to save priorities'
+        try {
+          const error = JSON.parse(errorText)
+          errorMessage = error.message || error.error || errorMessage
+        } catch (e) {
+          errorMessage = errorText || errorMessage
+        }
+        console.error('Priority save error:', errorMessage)
+        showMessage('error', errorMessage)
       }
     } catch (error) {
       console.error('Error saving priorities:', error)
@@ -266,12 +303,30 @@ export default function PriorityManagementPage() {
 
           {/* Available Tools */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">
-              Available Tools ({availableTools.length})
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Available Tools ({availableTools.length})
+              </h2>
+            </div>
+
+            {/* Search Bar */}
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Search tools..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+            </div>
 
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {availableTools.map((tool) => (
+              {filteredAvailableTools.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  {searchTerm ? 'No tools found matching your search' : 'No available tools'}
+                </div>
+              ) : (
+                filteredAvailableTools.map((tool) => (
                 <motion.div
                   key={tool.id}
                   layout
@@ -303,12 +358,7 @@ export default function PriorityManagementPage() {
                     Add to Top 15
                   </button>
                 </motion.div>
-              ))}
-
-              {availableTools.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>All tools are in priority list</p>
-                </div>
+                ))
               )}
             </div>
           </div>

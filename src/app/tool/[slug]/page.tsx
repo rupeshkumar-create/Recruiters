@@ -14,6 +14,7 @@ import UserAuthForm, { UserData } from '../../../components/UserAuthForm'
 import Navigation from '../../../components/Navigation'
 import EmailSubscription from '../../../components/EmailSubscription'
 import { useState, useEffect } from 'react'
+import { trackToolVisit, trackToolClick, trackToolShare } from '../../../lib/analytics'
 
 interface Tool {
   id: string;
@@ -113,6 +114,9 @@ export default function ToolPage({ params }: ToolPageProps) {
         
         const toolData = await response.json()
         setTool(toolData)
+        
+        // Track tool visit
+        trackToolVisit(toolData.id, toolData.name)
         
         // Fetch featured tools
         const featuredResponse = await fetch('/api/tools?featured=true')
@@ -275,6 +279,10 @@ export default function ToolPage({ params }: ToolPageProps) {
     navigator.clipboard.writeText(window.location.href)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+    // Track share
+    if (tool) {
+      trackToolShare(tool.id, 'copy', tool.name)
+    }
     // Increment share count
     const newShares = shares + 1
     setShares(newShares)
@@ -285,6 +293,10 @@ export default function ToolPage({ params }: ToolPageProps) {
     const url = encodeURIComponent(window.location.href)
     const text = encodeURIComponent(`Check out ${tool?.name}: ${tool?.tagline}`)
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}&title=${text}`, '_blank')
+    // Track share
+    if (tool) {
+      trackToolShare(tool.id, 'linkedin', tool.name)
+    }
     // Increment share count
     const newShares = shares + 1
     setShares(newShares)
@@ -295,6 +307,10 @@ export default function ToolPage({ params }: ToolPageProps) {
     const url = encodeURIComponent(window.location.href)
     const text = encodeURIComponent(`Check out ${tool?.name}: ${tool?.tagline}`)
     window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank')
+    // Track share
+    if (tool) {
+      trackToolShare(tool.id, 'twitter', tool.name)
+    }
     // Increment share count
     const newShares = shares + 1
     setShares(newShares)
@@ -455,7 +471,12 @@ export default function ToolPage({ params }: ToolPageProps) {
                     asChild
                     className="orange-bg hover:bg-orange-600 text-white px-8 py-3 text-lg font-semibold shadow-sm hover:shadow-md transition-all duration-200"
                   >
-                    <a href={tool.url} target="_blank" rel="noopener noreferrer">
+                    <a 
+                      href={tool.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      onClick={() => trackToolClick(tool.id, tool.name)}
+                    >
                       Visit Website
                       <ExternalLink className="w-5 h-5 ml-2" />
                     </a>

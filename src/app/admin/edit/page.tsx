@@ -14,6 +14,7 @@ import { Checkbox } from '../../../components/ui/checkbox'
 import { Badge } from '../../../components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../components/ui/dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
+import LogoUpload from '../../../components/LogoUpload'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -55,6 +56,18 @@ export default function EditToolsPage() {
 
   useEffect(() => {
     refreshTools()
+    
+    // Listen for refresh events
+    const handleRefresh = () => {
+      console.log('Refreshing edit tools...')
+      refreshTools()
+    }
+    
+    window.addEventListener('refreshTools', handleRefresh)
+    
+    return () => {
+      window.removeEventListener('refreshTools', handleRefresh)
+    }
   }, [])
 
   const refreshTools = async () => {
@@ -439,19 +452,41 @@ export default function EditToolsPage() {
                       />
                     </div>
                     
-                    <div>
-                      <Label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                        <Image className="w-4 h-4" />
-                        Logo URL
-                      </Label>
-                      <Input
-                        type="url"
-                        value={editForm.logo}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, logo: e.target.value }))}
-                        placeholder="https://example.com/logo.png"
-                        className="border-gray-300 focus:border-[#F26B21] focus:ring-[#F26B21]"
-                      />
-                    </div>
+                    <LogoUpload
+                      currentLogo={editForm.logo}
+                      onLogoChange={async (logoUrl) => {
+                        // Update form state
+                        setEditForm(prev => ({ ...prev, logo: logoUrl }))
+                        
+                        // Auto-save the tool with new logo
+                        if (editingTool) {
+                          try {
+                            const response = await fetch(`/api/tools/${editingTool.id}`, {
+                              method: 'PUT',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({
+                                ...editForm,
+                                logo: logoUrl
+                              }),
+                            })
+
+                            if (response.ok) {
+                              // Refresh tools data immediately
+                              await refreshTools()
+                              // Trigger global refresh event
+                              window.dispatchEvent(new CustomEvent('refreshTools'))
+                              console.log('Logo updated and saved successfully')
+                            } else {
+                              console.error('Failed to save logo update')
+                            }
+                          } catch (error) {
+                            console.error('Error saving logo update:', error)
+                          }
+                        }
+                      }}
+                    />
                     
                     <div>
                       <Label className="block text-sm font-medium text-gray-700 mb-2">

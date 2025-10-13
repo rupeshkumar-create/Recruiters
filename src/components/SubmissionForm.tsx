@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Upload } from 'lucide-react'
+import LogoUpload from './LogoUpload'
 
 
 interface SubmissionFormProps {
@@ -23,8 +24,7 @@ export default function SubmissionForm({ isOpen, onClose }: SubmissionFormProps)
     logo: '',
     email: ''
   })
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [logoPreview, setLogoPreview] = useState<string>('')
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [availableCategories, setAvailableCategories] = useState<string[]>([])
@@ -98,8 +98,6 @@ export default function SubmissionForm({ isOpen, onClose }: SubmissionFormProps)
       setTimeout(() => {
         setSubmitted(false)
         setFormData({ firstName: '', lastName: '', toolName: '', website: '', tagline: '', description: '', categories: [], logo: '', email: '' })
-        setLogoFile(null)
-        setLogoPreview('')
         onClose()
       }, 2000)
     } catch (error) {
@@ -116,19 +114,7 @@ export default function SubmissionForm({ isOpen, onClose }: SubmissionFormProps)
     })
   }
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setLogoFile(file)
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const result = event.target?.result as string
-        setLogoPreview(result)
-        setFormData(prev => ({ ...prev, logo: result }))
-      }
-      reader.readAsDataURL(file)
-    }
-  }
+
 
   const handleClose = () => {
     onClose()
@@ -331,31 +317,10 @@ export default function SubmissionForm({ isOpen, onClose }: SubmissionFormProps)
                 />
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="logo" className="block text-sm font-semibold text-gray-700">
-                  Logo Upload
-                </label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="file"
-                    id="logo"
-                    name="logo"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200 bg-gray-50 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600 file:transition-colors"
-                  />
-                  {logoPreview && (
-                    <div className="w-16 h-16 flex-shrink-0">
-                      <img
-                        src={logoPreview}
-                        alt="Logo preview"
-                        className="w-full h-full object-contain rounded-xl border-2 border-gray-200 bg-white p-1"
-                      />
-                    </div>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">Upload a logo image (optional). If not provided, we'll generate one from your tool name.</p>
-              </div>
+              <LogoUpload
+                currentLogo={formData.logo}
+                onLogoChange={(logoUrl) => setFormData(prev => ({ ...prev, logo: logoUrl }))}
+              />
 
 
 
