@@ -87,51 +87,39 @@ export default function HomePage() {
         setLoading(true)
         setError(null)
         
-        console.log('Loading recruiters...')
-        
         // Always start with sync data for immediate display
         const syncRecruiters = RecruiterStorage.getAllSync()
-        console.log('Sync recruiters loaded:', syncRecruiters?.length || 0)
         
         if (syncRecruiters && syncRecruiters.length > 0) {
           setTools(syncRecruiters)
           setInitialToolsLoaded(true)
           setLoading(false)
-          console.log('Set tools from sync data')
-        } else {
-          console.log('No sync data available, trying async load...')
         }
         
         // Try to load fresh data from Supabase (if available)
         try {
           const freshRecruiters = await RecruiterStorage.getAll()
-          console.log('Fresh recruiters loaded:', freshRecruiters?.length || 0)
           
           if (freshRecruiters && freshRecruiters.length > 0) {
             setTools(freshRecruiters)
             setInitialToolsLoaded(true)
             setLoading(false)
-            console.log('Set tools from fresh data')
           } else if (syncRecruiters.length === 0) {
             // If no sync data and no fresh data, load default
-            console.log('Loading default data...')
             const { csvRecruiters } = await import('../lib/data')
             setTools(csvRecruiters)
             setInitialToolsLoaded(true)
             setLoading(false)
-            console.log('Set tools from default data:', csvRecruiters.length)
           }
         } catch (supabaseError) {
-          console.log('Supabase not available, using localStorage data:', supabaseError)
+          console.log('Supabase not available, using localStorage data')
           
           // If we don't have sync data either, load default
           if (syncRecruiters.length === 0) {
-            console.log('Loading default data as fallback...')
             const { csvRecruiters } = await import('../lib/data')
             setTools(csvRecruiters)
             setInitialToolsLoaded(true)
             setLoading(false)
-            console.log('Set tools from default fallback:', csvRecruiters.length)
           }
         }
       } catch (error) {
@@ -143,7 +131,6 @@ export default function HomePage() {
           const { csvRecruiters } = await import('../lib/data')
           setTools(csvRecruiters)
           setInitialToolsLoaded(true)
-          console.log('Set tools from final fallback:', csvRecruiters.length)
         } catch (importError) {
           console.error('Failed to load default data:', importError)
           setError('Failed to load recruiter data')

@@ -58,21 +58,15 @@ export class RecruiterStorage {
 
   // Synchronous version for immediate use (uses localStorage cache)
   static getAllSync(): Recruiter[] {
-    console.log('getAllSync called')
-    
     if (typeof window === 'undefined') {
-      console.log('Server side, returning csvRecruiters:', csvRecruiters.length)
       return csvRecruiters
     }
 
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
-      console.log('localStorage data:', stored ? 'exists' : 'empty')
-      
       if (stored) {
         const parsed = JSON.parse(stored)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          console.log('Returning localStorage data:', parsed.length)
           return parsed
         }
       }
@@ -81,7 +75,6 @@ export class RecruiterStorage {
     }
 
     // Initialize localStorage with default data if empty
-    console.log('Initializing localStorage with default data:', csvRecruiters.length)
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(csvRecruiters))
     } catch (error) {
