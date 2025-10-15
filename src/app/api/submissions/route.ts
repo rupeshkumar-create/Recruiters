@@ -1,12 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { emailService } from '@/lib/email';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 
-// In-memory storage for submissions (in production, use a database)
+// In-memory storage for submissions (fallback when Supabase is not available)
 let submissions: any[] = [];
 
 // GET /api/submissions - Get all submissions
 export async function GET() {
   try {
+    // Try Supabase first
+    if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const { data, error } = await supabaseAdmin
+        .from('submissions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        // Fall back to in-memory storage
+        return NextResponse.json(submissions);
+      }
+
+      return NextResponse.json(data || []);
+    }
+
+    // Fallback to in-memory storage
     return NextResponse.json(submissions);
   } catch (error) {
     console.error('Error in GET /api/submissions:', error);
@@ -80,68 +98,57 @@ export async function POST(request: NextRequest) {
       .substring(0, 50);
 
     // Create submission object
-    const submission = {
-      id: Date.now().toString(),
-
-      // Basic Information
+    const submissionData = {
       name: body.name,
-      jobTitle: body.jobTitle,
+      job_title: body.jobTitle,
       company: body.company,
       email: body.email,
       phone: body.phone,
       linkedin: body.linkedin,
-      website: body.website || '',
-      location: body.location,
+      website: body.website || null,
+      specialization: body.specializations[0], // Primary specialization
       experience: body.experience,
+      location: body.location,
+      remote_available: body.remoteAvailable || false,
       bio: body.bio,
       avatar: body.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(body.name)}&background=3B82F6&color=fff&size=128`,
-      slug,
-
-      // Specializations
-      specialization: body.specializations[0], // Primary specialization for compatibility
-      specializations: body.specializations,
-
-      // Performance Metrics
-      rating: 0, // Will be set after reviews
-      reviewCount: 0,
-      placements: body.placements,
-      avgTimeToHire: body.avgTimeToHire,
-      candidateSatisfaction: body.candidateSatisfaction,
-      clientRetention: body.clientRetention,
-
-      // Professional Details
-      achievements: body.achievements,
-      workExperience: body.workExperience,
-      rolesPlaced: body.rolesPlaced,
-      industries: body.industries,
-      keywords: body.keywords,
-      languages: body.languages,
-      seniorityLevels: body.seniorityLevels,
-      employmentTypes: body.employmentTypes,
-      regions: body.regions,
-
-      // Optional fields
-      certifications: body.certifications || [],
-      testimonials: [], // Will be added later
-
-      // Availability
-      availability: body.availability || { accepting: true, nextAvailable: '' },
-
-      // Social Proof
-      socialProof: body.socialProof || { linkedinFollowers: 0, featuredIn: [] },
-
-      // Status and metadata
-      status: 'pending',
-      approved: false,
-      hidden: true, // Hidden until approved
-      featured: false,
-      submitterEmail: body.email,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      submitter_email: body.email,
+      status: 'pending'
     };
 
-    // Add to submissions array
-    submissions.push(submission);
+    let submission;
+
+    // Try Supabase first
+    if (supabase && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      const { data, error } = await supabase
+        .from('submissions')
+        .insert([submissionData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase error:', error);
+        // Fall back to in-memory storage
+        submission = {
+          id: Date.now().toString(),
+          ...submissionData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        submissions.push(submission);
+      } else {
+        submission = data;
+      }
+    } else {
+      // Fallback to in-memory storage
+      submission = {
+        id: Date.now().toString(),
+        ...submissionData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      submissions.push(submission);
+    }
 
     console.log('Recruiter profile submission received:', {
       id: submission.id,
@@ -189,20 +196,56 @@ export async function PUT(request: NextRequest) {
     }
 
     if (action === 'approve') {
-      const submission = submissions[submissionIndex];
-      submissions[submissionIndex] = {
-        ...submission,
-        status: 'approved',
-        approved: true,
-        hidden: false, // Make visible when approved
-        updated_at: new Date().toISOString()
-      };
+      let submission;
+
+      // Try Supabase first
+      if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        const { data, error } = await supabaseAdmin
+          .from('submissions')
+          .update({ status: 'approved' })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Supabase error:', error);
+          // Fall back to in-memory storage
+          const submissionIndex = submissions.findIndex(s => s.id === id);
+          if (submissionIndex === -1) {
+            return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
+          }
+          submission = submissions[submissionIndex];
+          submissions[submissionIndex] = {
+            ...submission,
+            status: 'approved',
+            updated_at: new Date().toISOString()
+          };
+        } else {
+          submission = data;
+        }
+      } else {
+        // Fallback to in-memory storage
+        const submissionIndex = submissions.findIndex(s => s.id === id);
+        if (submissionIndex === -1) {
+          return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
+        }
+        submission = submissions[submissionIndex];
+        submissions[submissionIndex] = {
+          ...submission,
+          status: 'approved',
+          updated_at: new Date().toISOString()
+        };
+      }
 
       console.log('Submission approved:', id);
 
       // Send approval email to the recruiter
       try {
-        const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/recruiter/${submission.slug}`;
+        const slug = submission.name.toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '')
+          .substring(0, 50);
+        const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/recruiter/${slug}`;
         await emailService.sendApprovalNotification({
           name: submission.name,
           email: submission.email,
@@ -216,12 +259,38 @@ export async function PUT(request: NextRequest) {
 
       return NextResponse.json({ message: 'Submission approved successfully' });
     } else if (action === 'reject') {
-      submissions[submissionIndex] = {
-        ...submissions[submissionIndex],
-        status: 'rejected',
-        approved: false,
-        updated_at: new Date().toISOString()
-      };
+      // Try Supabase first
+      if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        const { error } = await supabaseAdmin
+          .from('submissions')
+          .update({ status: 'rejected' })
+          .eq('id', id);
+
+        if (error) {
+          console.error('Supabase error:', error);
+          // Fall back to in-memory storage
+          const submissionIndex = submissions.findIndex(s => s.id === id);
+          if (submissionIndex === -1) {
+            return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
+          }
+          submissions[submissionIndex] = {
+            ...submissions[submissionIndex],
+            status: 'rejected',
+            updated_at: new Date().toISOString()
+          };
+        }
+      } else {
+        // Fallback to in-memory storage
+        const submissionIndex = submissions.findIndex(s => s.id === id);
+        if (submissionIndex === -1) {
+          return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
+        }
+        submissions[submissionIndex] = {
+          ...submissions[submissionIndex],
+          status: 'rejected',
+          updated_at: new Date().toISOString()
+        };
+      }
 
       console.log('Submission rejected:', id);
       return NextResponse.json({ message: 'Submission rejected successfully' });
@@ -244,14 +313,32 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Submission ID is required' }, { status: 400 });
     }
 
-    const submissionIndex = submissions.findIndex(s => s.id === id);
-    if (submissionIndex === -1) {
-      return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
+    // Try Supabase first
+    if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const { error } = await supabaseAdmin
+        .from('submissions')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Supabase error:', error);
+        // Fall back to in-memory storage
+        const submissionIndex = submissions.findIndex(s => s.id === id);
+        if (submissionIndex === -1) {
+          return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
+        }
+        submissions.splice(submissionIndex, 1);
+      }
+    } else {
+      // Fallback to in-memory storage
+      const submissionIndex = submissions.findIndex(s => s.id === id);
+      if (submissionIndex === -1) {
+        return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
+      }
+      submissions.splice(submissionIndex, 1);
     }
 
-    submissions.splice(submissionIndex, 1);
     console.log('Submission deleted:', id);
-
     return NextResponse.json({ message: 'Submission deleted successfully' });
   } catch (error) {
     console.error('Error in DELETE /api/submissions:', error);
