@@ -217,6 +217,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Icons provided by Lucide React
 - Animations powered by Framer Motion
 
+## 🔒 Security
+
+### Environment Variables
+- **Never commit `.env.local`** - it contains sensitive API keys
+- Use placeholder values in documentation (e.g., `your_api_key_here`)
+- Regenerate any accidentally exposed keys immediately
+
+### Best Practices
+- Review files before committing to ensure no secrets are included
+- Use secure channels to share actual API keys with team members
+- Regularly audit the repository for potential security issues
+
+For detailed security guidelines, see [SECURITY_FIX_GUIDE.md](SECURITY_FIX_GUIDE.md).
+
 ## 📞 Support
 
 For support, email [your-email@example.com] or create an issue in this repository.

@@ -238,8 +238,8 @@ GRANT ALL ON SCHEMA public TO public;
 ### **Check Environment Variables**
 Verify `.env.local` has correct Supabase credentials:
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://vgonkiijhwfmlmbztoka.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ## ✅ **Status After Fix**

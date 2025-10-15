@@ -43,9 +43,9 @@ npm install @supabase/supabase-js
 
 The `.env.local` file has been created with your credentials:
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://vgonkiijhwfmlmbztoka.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
 ### **Step 3: Migrate Existing Data**

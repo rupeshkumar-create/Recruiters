@@ -78,10 +78,10 @@ if [ ! -f .env.local ]; then
     print_warning ".env.local file not found. Creating from template..."
     cat > .env.local << EOL
 # Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://vgonkiijhwfmlmbztoka.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnb25raWlqaHdmbWxtYnp0b2thIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0NTU2NzgsImV4cCI6MjA3NjAzMTY3OH0.4Z6AkuptKpPifO5aQoPWMgXWxU6DHuohZAW3URdfjMM
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnb25raWlqaHdmbWxtYnp0b2thIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDQ1NTY3OCwiZXhwIjoyMDc2MDMxNjc4fQ.5w9GYTVa5u39MgkCS1COvrDNcF_u3PM2lnHxT9Hq5Uc
-SUPABASE_JWT_SECRET=Bhm1TxeEHlPkLLNLMNB65xQvROWrrDoHaU4nzbAdr29K63A1JiN8TgQLSKbaI2+94Si5i535kp9tv8PDLiNPLw==
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+SUPABASE_JWT_SECRET=your_supabase_jwt_secret
 EOL
     print_status "Environment file created!"
 else
