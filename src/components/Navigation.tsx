@@ -37,12 +37,12 @@ export default function Navigation({ onSubmitToolClick }: NavigationProps) {
             </motion.div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-bold text-slate-800 group-hover:text-orange-600 transition-colors">
-                AI-Powered Staffing Tools
+                Recruiters Directory
               </h1>
             </div>
             <div className="sm:hidden">
               <h1 className="text-lg font-bold text-slate-800 group-hover:text-orange-600 transition-colors">
-                AI Staffing Tools
+                Recruiters
               </h1>
             </div>
           </Link>
@@ -57,12 +57,12 @@ export default function Navigation({ onSubmitToolClick }: NavigationProps) {
             </Link>
             <motion.button
               onClick={onSubmitToolClick}
-              className="orange-bg text-white px-6 py-2.5 rounded-xl font-semibold flex items-center gap-2 shadow-sm hover:shadow-md transition-all duration-200 hover:bg-orange-600"
+              className="bg-orange-600 text-white px-6 py-2.5 rounded-xl font-semibold flex items-center gap-2 shadow-sm hover:shadow-md transition-all duration-200 hover:bg-orange-700"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
               <Plus className="w-4 h-4" />
-              Submit Tool
+              Submit Profile
             </motion.button>
           </div>
 
@@ -70,7 +70,7 @@ export default function Navigation({ onSubmitToolClick }: NavigationProps) {
           <div className="md:hidden flex items-center gap-3">
             <motion.button
               onClick={onSubmitToolClick}
-              className="orange-bg text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-1.5 text-sm shadow-sm"
+              className="bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-1.5 text-sm shadow-sm hover:bg-orange-700"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >

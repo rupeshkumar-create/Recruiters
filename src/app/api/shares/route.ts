@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '../../../lib/supabase'
 
-// GET /api/shares - Get share count for a tool
+// GET /api/shares - Get share count for a tool (local storage)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -11,26 +10,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 })
     }
 
-    const { data: shares, error } = await supabase
-      .from('shares')
-      .select('*')
-      .eq('tool_id', toolId)
-
-    if (error) {
-      console.error('Error fetching shares:', error)
-      return NextResponse.json({ error: 'Failed to fetch shares' }, { status: 500 })
-    }
+    // Mock shares data
+    const mockShares = [
+      { id: '1', tool_id: toolId, share_type: 'copy', created_at: new Date().toISOString() },
+      { id: '2', tool_id: toolId, share_type: 'linkedin', created_at: new Date().toISOString() }
+    ];
 
     // Count shares by type
-    const sharesByType = shares.reduce((acc, share) => {
+    const sharesByType = mockShares.reduce((acc, share) => {
       acc[share.share_type] = (acc[share.share_type] || 0) + 1
       return acc
     }, {} as Record<string, number>)
 
     return NextResponse.json({
-      total: shares.length,
+      total: mockShares.length,
       byType: sharesByType,
-      shares
+      shares: mockShares
     })
   } catch (error) {
     console.error('Error in shares API:', error)
@@ -38,7 +33,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/shares - Record a share
+// POST /api/shares - Record a share (local storage)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -53,29 +48,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid share type' }, { status: 400 })
     }
 
-    // Get client IP and user agent from headers
-    const userAgent = request.headers.get('user-agent') || 'Unknown'
-    const forwarded = request.headers.get('x-forwarded-for')
-    const realIp = request.headers.get('x-real-ip')
-    const ipAddress = forwarded?.split(',')[0] || realIp || '127.0.0.1'
+    // Mock share record
+    const share = {
+      id: Date.now().toString(),
+      tool_id: toolId,
+      share_type: shareType,
+      created_at: new Date().toISOString()
+    };
 
-    const { data, error } = await supabase
-      .from('shares')
-      .insert({
-        tool_id: toolId,
-        share_type: shareType,
-        user_agent: userAgent,
-        ip_address: ipAddress
-      })
-      .select()
-      .single()
+    console.log('Share recorded:', share);
 
-    if (error) {
-      console.error('Error inserting share:', error)
-      return NextResponse.json({ error: 'Failed to record share' }, { status: 500 })
-    }
-
-    return NextResponse.json({ share: data })
+    return NextResponse.json({ share })
   } catch (error) {
     console.error('Error in shares API:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

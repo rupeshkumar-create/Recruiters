@@ -2,16 +2,16 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { ExternalLink } from 'lucide-react'
-import { motion, AnimatePresence, useInView } from 'framer-motion'
-import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
+
 import { useRouter } from 'next/navigation'
 import Navigation from '../components/Navigation'
 import HorizontalFilter from '../components/HorizontalFilter'
 import SearchBar from '../components/SearchBar'
 import SubmissionForm from '../components/SubmissionForm'
 import EmailSubscription from '../components/EmailSubscription'
-import ToolImage from '../components/ToolImage'
-import { csvTools } from '../lib/data'
+
+import { RecruiterStorage } from '../lib/recruiterStorage'
 import { trackToolClick } from '../lib/analytics'
 
 
@@ -37,49 +37,13 @@ const itemVariants = {
 
 
 
-const scrollCardVariants = {
-  hidden: { 
-    opacity: 0, 
-    y: 50, 
-    scale: 0.95 
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { 
-      duration: 0.6, 
-      ease: "easeOut",
-      type: "spring",
-      stiffness: 100
-    }
-  },
-  hover: {
-    y: -8,
-    scale: 1.02,
-    transition: { duration: 0.3, ease: "easeOut" }
-  }
-}
+
 
 function ScrollAnimatedCard({ children, index }: { children: React.ReactNode, index: number }) {
-  const ref = useRef(null)
-  const isInView = useInView(ref, { 
-    once: true, 
-    margin: "-100px 0px",
-    amount: 0.3
-  })
-
   return (
-    <motion.div
-      ref={ref}
-      variants={scrollCardVariants}
-      initial="hidden"
-      animate={isInView ? "visible" : "hidden"}
-      whileHover="hover"
-      transition={{ delay: index * 0.1 }}
-    >
+    <div>
       {children}
-    </motion.div>
+    </div>
   )
 }
 
@@ -89,12 +53,25 @@ export default function HomePage() {
   const [showSubmissionForm, setShowSubmissionForm] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
-  const [tools, setTools] = useState<any[]>(csvTools) // Initialize with csvTools
+  const [tools, setTools] = useState<any[]>([]) // Initialize empty, will load from storage
   const [initialToolsLoaded, setInitialToolsLoaded] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  // Additional filter states
+  const [additionalFilters, setAdditionalFilters] = useState({
+    locations: [] as string[],
+    experienceLevels: [] as string[],
+    ratings: [] as string[],
+    badges: [] as string[],
+    companies: [] as string[],
+    remoteAvailable: null as boolean | null
+  })
 
   
   const searchInputRef = useRef<HTMLInputElement>(null)
   const suggestionsRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
 
   // Ensure page starts at top on load
   useEffect(() => {
@@ -102,46 +79,70 @@ export default function HomePage() {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
   }, [])
 
-  // Load approved tools from Supabase API on component mount
+  // Load tools from storage and listen for updates
   useEffect(() => {
-    const fetchTools = async () => {
+    // Load initial data from storage
+    const loadRecruiters = async () => {
       try {
-        const response = await fetch('/api/tools')
-        if (response.ok) {
-          const toolsData = await response.json()
-          setTools(toolsData)
-        } else {
-          console.error('Failed to fetch tools from API, using CSV fallback')
-          // Use csvTools as fallback when API fails
-          setTools(csvTools)
+        setLoading(true)
+        setError(null)
+        
+        // Always start with sync data for immediate display
+        const syncRecruiters = RecruiterStorage.getAllSync()
+        if (syncRecruiters && syncRecruiters.length > 0) {
+          setTools(syncRecruiters)
+          setInitialToolsLoaded(true)
+          setLoading(false)
+        }
+        
+        // Try to load fresh data from Supabase (if available)
+        try {
+          const freshRecruiters = await RecruiterStorage.getAll()
+          if (freshRecruiters && freshRecruiters.length > 0) {
+            setTools(freshRecruiters)
+          }
+        } catch (supabaseError) {
+          console.log('Supabase not available, using localStorage data')
         }
       } catch (error) {
-        console.error('Error fetching tools:', error, 'using CSV fallback')
-        // Use csvTools as fallback when API fails
-        setTools(csvTools)
+        console.error('Error loading recruiters:', error)
+        setError('Failed to load recruiters')
+        
+        // Final fallback to default data
+        try {
+          const { csvRecruiters } = await import('../lib/data')
+          setTools(csvRecruiters)
+          setInitialToolsLoaded(true)
+        } catch (importError) {
+          console.error('Failed to load default data:', importError)
+          setError('Failed to load recruiter data')
+        }
       } finally {
-        setInitialToolsLoaded(true)
+        setLoading(false)
       }
     }
+
+    loadRecruiters()
     
-    fetchTools()
-    
-    // Listen for refresh events from admin panel
-    const handleRefreshTools = () => {
-      console.log('Refreshing tools data...')
-      fetchTools()
+    // Listen for updates from admin panel
+    const handleRecruitersUpdated = (event: CustomEvent) => {
+      console.log('Recruiters updated, refreshing homepage...')
+      setTools(event.detail.recruiters)
       // Force re-render of all tool images
       setInitialToolsLoaded(false)
       setTimeout(() => setInitialToolsLoaded(true), 100)
     }
     
-    window.addEventListener('refreshTools', handleRefreshTools)
+    // Listen for both custom events and refresh events
+    window.addEventListener('recruitersUpdated', handleRecruitersUpdated as EventListener)
+    window.addEventListener('refreshTools', loadRecruiters)
     
     // Cleanup
     return () => {
-      window.removeEventListener('refreshTools', handleRefreshTools)
+      window.removeEventListener('recruitersUpdated', handleRecruitersUpdated as EventListener)
+      window.removeEventListener('refreshTools', loadRecruiters)
     }
-  }, []) // Remove dependency to prevent re-fetching
+  }, [])
 
 
 
@@ -162,14 +163,24 @@ export default function HomePage() {
       score += 50;
     }
     
-    // Content match (medium priority)
-    if (tool.content && tool.content.toLowerCase().includes(term)) {
+    // Bio match (medium priority)
+    if (tool.bio && tool.bio.toLowerCase().includes(term)) {
       score += 25;
     }
     
-    // Categories match (lower priority)
-    if (tool.categories && tool.categories.toLowerCase().includes(term)) {
+    // Company match (medium priority)
+    if (tool.company && tool.company.toLowerCase().includes(term)) {
+      score += 20;
+    }
+    
+    // Specialization match (lower priority)
+    if (tool.specialization && tool.specialization.toLowerCase().includes(term)) {
       score += 15;
+    }
+    
+    // Location match (lower priority)
+    if (tool.location && tool.location.toLowerCase().includes(term)) {
+      score += 10;
     }
     
     return score;
@@ -187,57 +198,28 @@ export default function HomePage() {
   const [categories, setCategories] = useState<string[]>(['All'])
   const [categoriesLoaded, setCategoriesLoaded] = useState(false)
   
-  // Helper function to get categories that have tools
+  // Helper function to get specializations that have recruiters
   const getCategoriesWithTools = (toolsList: any[]) => {
     const categorySet = new Set<string>()
     toolsList.filter(tool => !tool.hidden).forEach(tool => {
-      if (tool.categories) {
-        tool.categories.split(',').forEach((cat: string) => {
-          const trimmed = cat.trim()
-          if (trimmed) {
-            const formatted = formatCategoryName(trimmed)
-            categorySet.add(formatted)
-          }
-        })
+      if (tool.specialization) {
+        const trimmed = tool.specialization.trim()
+        if (trimmed) {
+          const formatted = formatCategoryName(trimmed)
+          categorySet.add(formatted)
+        }
       }
     })
     return Array.from(categorySet).sort()
   }
   
   useEffect(() => {
-    // Only load categories once, not dependent on tools
-    if (categoriesLoaded) return
+    // Load categories from local tools data
+    if (categoriesLoaded || tools.length === 0) return
     
-    const loadCategories = async () => {
-      try {
-        const response = await fetch('/api/categories?active=true')
-        if (response.ok) {
-          const categoriesData = await response.json()
-          const categoryNames = categoriesData.map((cat: any) => cat.name)
-          
-          // Filter categories to only include those that have tools
-          if (tools.length > 0) {
-            const categoriesWithTools = getCategoriesWithTools(tools)
-            const filteredCategories = categoryNames.filter((cat: string) => 
-              categoriesWithTools.includes(cat)
-            )
-            setCategories(['All', ...filteredCategories.sort()])
-          } else {
-            // If no tools loaded yet, use all categories for now
-            setCategories(['All', ...categoryNames.sort()])
-          }
-          setCategoriesLoaded(true)
-        } else {
-          console.error('Failed to load categories, will use fallback when tools load')
-          // Don't set categoriesLoaded to true here, let it fallback later
-        }
-      } catch (error) {
-        console.error('Error loading categories:', error)
-        // Don't set categoriesLoaded to true here, let it fallback later
-      }
-    }
-
-    loadCategories()
+    const categoriesWithTools = getCategoriesWithTools(tools)
+    setCategories(['All', ...categoriesWithTools])
+    setCategoriesLoaded(true)
   }, [categoriesLoaded, tools])
 
   // Update categories when tools change to filter out empty categories
@@ -259,21 +241,83 @@ export default function HomePage() {
 
   const filteredTools = useMemo(() => {
     // First filter out hidden tools
-    const visibleTools = tools.filter(tool => !tool.hidden)
+    let filtered = tools.filter(tool => !tool.hidden)
     
-    // Then filter by categories (support multiple selection)
-    let categoryFiltered = visibleTools
+    // Filter by specializations (support multiple selection)
     if (!selectedCategories.includes('All')) {
-      categoryFiltered = visibleTools.filter(tool => 
-        tool.categories && selectedCategories.some(category =>
-          tool.categories.toLowerCase().includes(category.toLowerCase())
+      filtered = filtered.filter(tool => 
+        tool.specialization && selectedCategories.some(category =>
+          tool.specialization.toLowerCase().includes(category.toLowerCase())
         )
       )
     }
     
+    // Filter by locations
+    if (additionalFilters.locations.length > 0) {
+      filtered = filtered.filter(tool => 
+        tool.location && additionalFilters.locations.some(location =>
+          tool.location.split(',')[0].trim() === location
+        )
+      )
+    }
+    
+    // Filter by experience levels
+    if (additionalFilters.experienceLevels.length > 0) {
+      filtered = filtered.filter(tool => {
+        if (!tool.experience) return false
+        const exp = tool.experience.toLowerCase()
+        return additionalFilters.experienceLevels.some(level => {
+          if (level === '1-3 years') return exp.includes('1') || exp.includes('2') || exp.includes('3')
+          if (level === '4-6 years') return exp.includes('4') || exp.includes('5') || exp.includes('6')
+          if (level === '7-9 years') return exp.includes('7') || exp.includes('8') || exp.includes('9')
+          if (level === '10+ years') return exp.includes('10') || exp.includes('15')
+          return false
+        })
+      })
+    }
+    
+    // Filter by ratings
+    if (additionalFilters.ratings.length > 0) {
+      filtered = filtered.filter(tool => {
+        const rating = tool.rating || 0
+        return additionalFilters.ratings.some(ratingFilter => {
+          if (ratingFilter === '4.5+ Stars') return rating >= 4.5
+          if (ratingFilter === '4.0+ Stars') return rating >= 4.0
+          if (ratingFilter === '3.5+ Stars') return rating >= 3.5
+          if (ratingFilter === 'Any Rating') return true
+          return false
+        })
+      })
+    }
+    
+    // Filter by badges
+    if (additionalFilters.badges.length > 0) {
+      filtered = filtered.filter(tool => {
+        if (!tool.badge) return false
+        const badgeMap: { [key: string]: string } = {
+          'Top Rated': 'top-rated',
+          'Verified': 'verified',
+          'Rising Star': 'rising-star'
+        }
+        return additionalFilters.badges.some(badge => tool.badge === badgeMap[badge])
+      })
+    }
+    
+    // Filter by companies
+    if (additionalFilters.companies.length > 0) {
+      filtered = filtered.filter(tool => 
+        tool.company && additionalFilters.companies.includes(tool.company)
+      )
+    }
+    
+    // Filter by remote availability
+    if (additionalFilters.remoteAvailable !== null) {
+      filtered = filtered.filter(tool => tool.remoteAvailable === additionalFilters.remoteAvailable)
+    }
+    
     // Finally apply search if needed
     if (searchTerm && searchTerm.length > 1) {
-      const scoredTools = categoryFiltered
+      const scoredTools = filtered
         .map(tool => ({
           ...tool,
           searchScore: getSearchScore(tool, searchTerm)
@@ -284,8 +328,8 @@ export default function HomePage() {
       return scoredTools
     }
     
-    return categoryFiltered
-  }, [selectedCategories, searchTerm, tools, getSearchScore])
+    return filtered
+  }, [selectedCategories, searchTerm, tools, getSearchScore, additionalFilters])
 
   // Split tools for eager loading - first 6 tools (2 rows) load immediately
   const eagerTools = useMemo(() => filteredTools.slice(0, 6), [filteredTools])
@@ -308,7 +352,7 @@ export default function HomePage() {
       .slice(0, 8)
     
     return scoredSuggestions
-  }, [searchTerm, tools])
+  }, [searchTerm, tools, getSearchScore])
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -344,7 +388,7 @@ export default function HomePage() {
     
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [showSuggestions, suggestions, selectedSuggestionIndex])
+  }, [showSuggestions, suggestions, selectedSuggestionIndex, router])
 
   // Handle clicks outside suggestions
   useEffect(() => {
@@ -385,7 +429,7 @@ export default function HomePage() {
 
 
 
-  const router = useRouter()
+
 
   const handleSearchChange = (term: string) => {
     setSearchTerm(term)
@@ -395,6 +439,35 @@ export default function HomePage() {
 
   const handleSuggestionClick = (tool: any): void => {
     router.push(`/tool/${tool.slug}`)
+  }
+
+  // Show loading state
+  if (loading && tools.length === 0) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading recruiters...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error && tools.length === 0) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -418,7 +491,7 @@ export default function HomePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
               >
-                Discover the best AI-powered tools for modern recruitment and staffing
+                Connect with Top Recruiters and Talent Acquisition Professionals
               </motion.h1>
               <motion.p 
                 className="text-base text-gray-600 max-w-2xl mx-auto leading-relaxed mb-1.5"
@@ -426,7 +499,7 @@ export default function HomePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.6 }}
               >
-                From resume screening to candidate sourcing, find the perfect solution for your hiring needs
+                Find specialized recruiters across industries to help you land your dream job or build your perfect team
               </motion.p>
             </motion.div>
           </div>
@@ -456,6 +529,8 @@ export default function HomePage() {
               onCategoryChange={setSelectedCategories}
               tools={tools}
               className=""
+              additionalFilters={additionalFilters}
+              onAdditionalFiltersChange={setAdditionalFilters}
             />
           </div>
         </div>
@@ -465,10 +540,10 @@ export default function HomePage() {
           <div className="container mx-auto px-4 max-w-7xl bg-white shadow-sm rounded-t-xl">
             {/* Add some top padding to create gap from search bar */}
             <div className="pt-6">
-              {/* Tools Count Header */}
+              {/* Recruiters Count Header */}
               <div className="mb-6">
                 <p className="text-sm text-gray-600 font-medium">
-                  Showing {filteredTools.length} tools
+                  Showing {filteredTools.length} recruiters
                 </p>
               </div>
             
@@ -492,43 +567,59 @@ export default function HomePage() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.4, delay: index * 0.1 }}
                           >
-                            <Link href={`/tool/${tool.slug}`} className="block h-full">
-                              <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 group h-full flex flex-col shadow-sm">
-                                <div className="flex items-start gap-3 mb-4">
-                                  <div className="w-10 h-10 flex-shrink-0">
-                                    <ToolImage 
-                                      src={tool.logo}
-                                      alt={`${tool.name} logo`}
-                                      name={tool.name}
-                                      size="md"
-                                      className="w-full h-full rounded-lg shadow-sm"
+                            <div 
+                              className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 group h-full flex flex-col shadow-sm cursor-pointer"
+                              onClick={() => router.push(`/tool/${tool.slug}`)}
+                            >
+                                <div className="flex items-start gap-4 mb-4">
+                                  <div className="w-12 h-12 flex-shrink-0">
+                                    <img 
+                                      src={tool.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(tool.name)}&background=3B82F6&color=fff&size=48`}
+                                      alt={`${tool.name} avatar`}
+                                      className="w-full h-full rounded-full shadow-sm object-cover"
                                     />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2 leading-tight">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors line-clamp-1 leading-tight">
                                       {tool.name}
                                     </h3>
-                                    <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
-                                      {tool.tagline}
+                                    <p className="text-sm text-orange-600 font-medium mb-2">
+                                      {tool.company}
+                                    </p>
+                                    <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                                      {tool.bio}
                                     </p>
                                   </div>
                                 </div>
                                 
-                                <div className="mt-auto pt-4 flex items-center justify-between">
-                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 shadow-sm">
-                                    {formatCategoryName(tool.categories.split(',')[0].trim())}
-                                  </span>
-                                  <motion.div 
-                                    className="text-orange-600 hover:text-orange-700 text-sm font-medium flex items-center gap-1"
-                                    whileHover={{ x: 2 }}
-                                    transition={{ duration: 0.2 }}
-                                  >
-                                    Visit Website
-                                    <ExternalLink className="w-3 h-3" />
-                                  </motion.div>
+                                <div className="mt-auto pt-4 space-y-3">
+                                  <div className="flex items-center justify-between text-xs text-gray-500">
+                                    <span>{tool.location}</span>
+                                    <span>{tool.experience} experience</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 shadow-sm">
+                                      {tool.specialization}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      {tool.rating && (
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-yellow-400">★</span>
+                                          <span className="text-sm font-medium text-gray-700">{tool.rating}</span>
+                                        </div>
+                                      )}
+                                      <motion.div 
+                                        className="text-orange-600 hover:text-orange-700 text-sm font-medium flex items-center gap-1"
+                                        whileHover={{ x: 2 }}
+                                        transition={{ duration: 0.2 }}
+                                      >
+                                        View Profile
+                                        <ExternalLink className="w-3 h-3" />
+                                      </motion.div>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                            </Link>
                           </motion.div>
                         ))}
                       </motion.div>
@@ -543,47 +634,62 @@ export default function HomePage() {
                         >
                           {lazyTools.map((tool, index) => (
                             <ScrollAnimatedCard key={`${tool.id}-${tool.logo}-${initialToolsLoaded}`} index={index}>
-                              <Link 
-                                href={`/tool/${tool.slug}`} 
-                                className="block h-full"
-                                onClick={() => trackToolClick(tool.id, tool.name)}
+                              <div 
+                                className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 group h-full flex flex-col shadow-sm cursor-pointer"
+                                onClick={() => {
+                                  trackToolClick(tool.id, tool.name)
+                                  router.push(`/tool/${tool.slug}`)
+                                }}
                               >
-                                <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 group h-full flex flex-col shadow-sm">
-                                  <div className="flex items-start gap-3 mb-4">
-                                    <div className="w-10 h-10 flex-shrink-0">
-                                      <ToolImage 
-                                        src={tool.logo}
-                                        alt={`${tool.name} logo`}
-                                        name={tool.name}
-                                        size="md"
-                                        className="w-full h-full rounded-lg shadow-sm"
+                                  <div className="flex items-start gap-4 mb-4">
+                                    <div className="w-12 h-12 flex-shrink-0">
+                                      <img 
+                                        src={tool.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(tool.name)}&background=3B82F6&color=fff&size=48`}
+                                        alt={`${tool.name} avatar`}
+                                        className="w-full h-full rounded-full shadow-sm object-cover"
                                       />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2 leading-tight">
+                                      <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-orange-600 transition-colors line-clamp-1 leading-tight">
                                         {tool.name}
                                       </h3>
-                                      <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
-                                        {tool.tagline}
+                                      <p className="text-sm text-orange-600 font-medium mb-2">
+                                        {tool.company}
+                                      </p>
+                                      <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                                        {tool.bio}
                                       </p>
                                     </div>
                                   </div>
                                   
-                                  <div className="mt-auto pt-4 flex items-center justify-between">
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 shadow-sm">
-                                      {formatCategoryName(tool.categories.split(',')[0].trim())}
-                                    </span>
-                                    <motion.div 
-                                      className="text-orange-600 hover:text-orange-700 text-sm font-medium flex items-center gap-1"
-                                      whileHover={{ x: 2 }}
-                                      transition={{ duration: 0.2 }}
-                                    >
-                                      Visit Website
-                                      <ExternalLink className="w-3 h-3" />
-                                    </motion.div>
+                                  <div className="mt-auto pt-4 space-y-3">
+                                    <div className="flex items-center justify-between text-xs text-gray-500">
+                                      <span>{tool.location}</span>
+                                      <span>{tool.experience} experience</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 shadow-sm">
+                                        {tool.specialization}
+                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        {tool.rating && (
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-yellow-400">★</span>
+                                            <span className="text-sm font-medium text-gray-700">{tool.rating}</span>
+                                          </div>
+                                        )}
+                                        <motion.div 
+                                          className="text-orange-600 hover:text-orange-700 text-sm font-medium flex items-center gap-1"
+                                          whileHover={{ x: 2 }}
+                                          transition={{ duration: 0.2 }}
+                                        >
+                                          View Profile
+                                          <ExternalLink className="w-3 h-3" />
+                                        </motion.div>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
-                              </Link>
                             </ScrollAnimatedCard>
                           ))}
                         </motion.div>
@@ -596,7 +702,7 @@ export default function HomePage() {
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <p className="text-lg text-gray-500 mb-2">No tools found</p>
+                      <p className="text-lg text-gray-500 mb-2">No recruiters found</p>
                       <p className="text-sm text-gray-400">Try adjusting your search or filter criteria</p>
                     </motion.div>
                   )}

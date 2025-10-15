@@ -55,8 +55,8 @@ export default function ToolImage({
   const getOptimizedImageUrl = (originalSrc: string) => {
     if (!originalSrc) return ''
     
-    // Don't proxy Supabase storage URLs - they work directly
-    if (originalSrc.includes('supabase.co/storage')) {
+    // Handle direct URLs that don't need proxying
+    if (originalSrc.includes('ui-avatars.com')) {
       return originalSrc
     }
     
@@ -66,8 +66,8 @@ export default function ToolImage({
       return `https://images.weserv.nl/?url=${encodeURIComponent(originalSrc)}&w=${dimensions}&h=${dimensions}&fit=contain&bg=white&output=webp&q=85`
     }
     
-    // Handle other external images that might need proxy (but not Supabase)
-    if (originalSrc.startsWith('http') && typeof window !== 'undefined' && !originalSrc.includes(window.location.hostname) && !originalSrc.includes('supabase.co')) {
+    // Handle other external images that might need proxy
+    if (originalSrc.startsWith('http') && typeof window !== 'undefined' && !originalSrc.includes(window.location.hostname) && !originalSrc.includes('ui-avatars.com')) {
       const dimensions = size === 'lg' ? '64' : size === 'md' ? '48' : '32'
       return `https://images.weserv.nl/?url=${encodeURIComponent(originalSrc)}&w=${dimensions}&h=${dimensions}&fit=contain&bg=white&output=webp&q=85`
     }
@@ -86,8 +86,8 @@ export default function ToolImage({
   }
 
   const baseImageUrl = proxyError ? src : getOptimizedImageUrl(src)
-  // Add cache-busting for Supabase URLs when refreshed
-  const imageUrl = baseImageUrl && baseImageUrl.includes('supabase.co') && refreshKey > 0 
+  // Add cache-busting for external URLs when refreshed
+  const imageUrl = baseImageUrl && refreshKey > 0 && baseImageUrl.startsWith('http')
     ? `${baseImageUrl}?v=${refreshKey}` 
     : baseImageUrl
   const fallbackLetter = name.charAt(0).toUpperCase()

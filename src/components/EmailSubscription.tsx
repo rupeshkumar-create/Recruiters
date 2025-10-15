@@ -58,7 +58,7 @@ export default function EmailSubscription({ className = '' }: EmailSubscriptionP
       localStorage.setItem('emailSubscriptions', JSON.stringify(subscriptions))
       
       setStatus('success')
-      setMessage('Successfully subscribed! You\'ll receive updates about new tools and features.')
+      setMessage('Successfully subscribed! You\'ll receive updates about new recruiters and job opportunities.')
       setEmail('')
       
       // Reset status after 5 seconds
@@ -98,7 +98,7 @@ export default function EmailSubscription({ className = '' }: EmailSubscriptionP
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          Stay Updated with Latest Tools
+          Stay Connected with Top Recruiters
         </motion.h2>
         
         <motion.p
@@ -107,8 +107,8 @@ export default function EmailSubscription({ className = '' }: EmailSubscriptionP
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          Get notified when we add new AI tools, features, and updates to our directory.
-          Join thousands of professionals staying ahead of the curve.
+          Get notified when new recruiters join our directory and discover exclusive job opportunities.
+          Join thousands of professionals advancing their careers.
         </motion.p>
         
         <motion.form

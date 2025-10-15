@@ -1,215 +1,211 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { ToolSubmission } from '../../../types/submissions';
 
-// Use service role key for admin operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
+// In-memory storage for submissions (in production, use a database)
+let submissions: any[] = [];
 
-// GET /api/submissions - Fetch all pending submissions (admin only)
+// GET /api/submissions - Get all submissions
 export async function GET() {
   try {
-    // Check if Supabase is configured
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
-      return NextResponse.json({ error: 'Supabase not configured. Please check SUPABASE_SETUP.md' }, { status: 503 });
-    }
-    const { data: submissions, error } = await supabase
-      .from('submissions')
-      .select(`
-        *,
-        submission_categories!inner(
-          categories!inner(
-            id,
-            name,
-            slug
-          )
-        )
-      `)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching submissions:', error);
-      return NextResponse.json({ error: 'Failed to fetch submissions' }, { status: 500 });
-    }
-
-    // Transform the data to match the expected format
-    const transformedSubmissions = submissions?.map(submission => ({
-      ...submission,
-      categories: submission.submission_categories?.map((sc: any) => sc.categories.name) || []
-    })) || [];
-
-    return NextResponse.json(transformedSubmissions);
+    return NextResponse.json(submissions);
   } catch (error) {
     console.error('Error in GET /api/submissions:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// POST /api/submissions - Create a new submission
+// POST /api/submissions - Submit a new recruiter profile
 export async function POST(request: NextRequest) {
   try {
-    console.log('POST /api/submissions called');
-    console.log('Environment check:', {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Present' : 'Missing',
-    serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length
-  });
-    
     const body = await request.json();
-    console.log('Request body:', body);
-    const { first_name, last_name, name, url, tagline, content, description, logo, categories, email } = body;
 
     // Validate required fields
-    if (!first_name || !last_name || !name || !url || !tagline || !email) {
-      return NextResponse.json({ error: 'Missing required fields: first_name, last_name, name, url, tagline, email' }, { status: 400 });
+    const requiredFields = [
+      'name', 'jobTitle', 'company', 'email', 'phone', 'linkedin',
+      'location', 'experience', 'bio', 'specializations',
+      'placements', 'avgTimeToHire', 'candidateSatisfaction', 'clientRetention',
+      'achievements', 'workExperience', 'rolesPlaced', 'industries',
+      'keywords', 'languages', 'seniorityLevels', 'employmentTypes', 'regions'
+    ];
+
+    const missingFields = requiredFields.filter(field => {
+      const value = body[field];
+      if (Array.isArray(value)) {
+        return value.length === 0;
+      }
+      return !value || (typeof value === 'string' && value.trim() === '');
+    });
+
+    if (missingFields.length > 0) {
+      return NextResponse.json({
+        error: `Missing or empty required fields: ${missingFields.join(', ')}`
+      }, { status: 400 });
     }
 
-    // Validate URL format
-    try {
-      new URL(url);
-    } catch {
-      return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 });
+    // Validate bio word count (200-500 words)
+    const bioWordCount = body.bio.trim().split(/\s+/).length;
+    if (bioWordCount < 200 || bioWordCount > 500) {
+      return NextResponse.json({
+        error: `Bio must be between 200-500 words (currently ${bioWordCount} words)`
+      }, { status: 400 });
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
+    // Validate array lengths
+    const arrayValidations = [
+      { field: 'specializations', min: 1, max: 3 },
+      { field: 'achievements', min: 1, max: 6 },
+      { field: 'workExperience', min: 1, max: 3 },
+      { field: 'rolesPlaced', min: 1, max: 7 },
+      { field: 'industries', min: 1, max: 5 },
+      { field: 'keywords', min: 1, max: 5 },
+      { field: 'languages', min: 1, max: 3 },
+      { field: 'seniorityLevels', min: 1, max: 3 },
+      { field: 'employmentTypes', min: 1, max: 2 },
+      { field: 'regions', min: 1, max: 2 }
+    ];
+
+    for (const validation of arrayValidations) {
+      const array = body[validation.field];
+      if (!Array.isArray(array) || array.length < validation.min || array.length > validation.max) {
+        return NextResponse.json({
+          error: `${validation.field} must have between ${validation.min}-${validation.max} items`
+        }, { status: 400 });
+      }
     }
 
     // Generate slug
-    const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const slug = body.name.toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .substring(0, 50);
 
-    // Prepare submission data
-    const submissionData: ToolSubmission = {
-      name,
-      url,
-      tagline,
-      description: description || '',
-      first_name,
-      last_name,
-      email,
-      submitter_email: email
+    // Create submission object
+    const submission = {
+      id: Date.now().toString(),
+
+      // Basic Information
+      name: body.name,
+      jobTitle: body.jobTitle,
+      company: body.company,
+      email: body.email,
+      phone: body.phone,
+      linkedin: body.linkedin,
+      website: body.website || '',
+      location: body.location,
+      experience: body.experience,
+      bio: body.bio,
+      avatar: body.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(body.name)}&background=3B82F6&color=fff&size=128`,
+      slug,
+
+      // Specializations
+      specialization: body.specializations[0], // Primary specialization for compatibility
+      specializations: body.specializations,
+
+      // Performance Metrics
+      rating: 0, // Will be set after reviews
+      reviewCount: 0,
+      placements: body.placements,
+      avgTimeToHire: body.avgTimeToHire,
+      candidateSatisfaction: body.candidateSatisfaction,
+      clientRetention: body.clientRetention,
+
+      // Professional Details
+      achievements: body.achievements,
+      workExperience: body.workExperience,
+      rolesPlaced: body.rolesPlaced,
+      industries: body.industries,
+      keywords: body.keywords,
+      languages: body.languages,
+      seniorityLevels: body.seniorityLevels,
+      employmentTypes: body.employmentTypes,
+      regions: body.regions,
+
+      // Optional fields
+      certifications: body.certifications || [],
+      testimonials: [], // Will be added later
+
+      // Availability
+      availability: body.availability || { accepting: true, nextAvailable: '' },
+
+      // Social Proof
+      socialProof: body.socialProof || { linkedinFollowers: 0, featuredIn: [] },
+
+      // Status and metadata
+      status: 'pending',
+      approved: false,
+      hidden: true, // Hidden until approved
+      featured: false,
+      submitterEmail: body.email,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
-    // Insert the submission
-    const { data: submission, error: submissionError } = await supabase
-      .from('submissions')
-      .insert({
-        name,
-        first_name,
-        last_name,
-        url,
-        tagline,
-        content,
-        description,
-        logo: logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=F26B21&color=fff&size=48`,
-        slug: name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-        submitter_email: email
-      })
-      .select()
-      .single();
+    // Add to submissions array
+    submissions.push(submission);
 
-    if (submissionError) {
-      console.error('Error creating submission:', submissionError);
-      return NextResponse.json({ error: 'Failed to create submission' }, { status: 500 });
-    }
+    console.log('Recruiter profile submission received:', {
+      id: submission.id,
+      name: submission.name,
+      company: submission.company,
+      email: submission.email
+    });
 
-    // Handle categories if provided
-    if (categories && Array.isArray(categories)) {
-      for (const categoryName of categories) {
-        // Find or create category
-        let { data: category, error: categoryError } = await supabase
-          .from('categories')
-          .select('id')
-          .eq('name', categoryName)
-          .single();
-
-        // If category doesn't exist, create it
-        if (categoryError && categoryError.code === 'PGRST116') {
-          const categorySlug = categoryName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-          const { data: newCategory, error: createError } = await supabase
-            .from('categories')
-            .insert({
-              name: categoryName,
-              slug: categorySlug
-            })
-            .select()
-            .single();
-
-          if (createError) {
-            console.error('Error creating category:', createError);
-            continue;
-          }
-          category = newCategory;
-        }
-
-        if (category) {
-          // Link submission to category
-          await supabase
-            .from('submission_categories')
-            .insert({
-              submission_id: submission.id,
-              category_id: category.id
-            });
-        }
-      }
-    }
-
-    // Send confirmation email (only once per submission)
-    let emailSent = false;
-    try {
-      if (!emailSent) {
-        const emailResponse = await fetch(`${request.nextUrl.origin}/api/send-email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            transactionalId: 'cmf7u53sj2sscz40iyo4j540n',
-            email: email,
-            dataVariables: {
-              first_name: first_name, // For template {{DATA_VARIABLE:first_name}} - User's first name
-              last_name: last_name, // For template {{DATA_VARIABLE:last_name}} - User's last name
-              tool_name: name, // For template {{DATA_VARIABLE:tool_name}} - Tool name  
-              tool_description: description || tagline, // For template {{DATA_VARIABLE:tool_description}} - Tool description
-              website_url: url, // For template {{DATA_VARIABLE:website_url}} - Tool website URL
-            }
-          })
-        });
-
-        emailSent = true;
-        
-        if (!emailResponse.ok) {
-          console.error('Failed to send confirmation email:', await emailResponse.text());
-          // Don't fail the submission if email fails
-        } else {
-          console.log('Confirmation email sent successfully to:', email);
-        }
-      }
-    } catch (emailError) {
-      console.error('Error sending confirmation email:', emailError);
-      // Don't fail the submission if email fails
-    }
-
-
-
-    return NextResponse.json(submission, { status: 201 });
+    return NextResponse.json({
+      message: 'Recruiter profile submitted successfully',
+      id: submission.id
+    }, { status: 201 });
   } catch (error) {
     console.error('Error in POST /api/submissions:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// DELETE /api/submissions - Delete a submission (admin only)
+// PUT /api/submissions - Approve a submission
+export async function PUT(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const action = searchParams.get('action');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Submission ID is required' }, { status: 400 });
+    }
+
+    const submissionIndex = submissions.findIndex(s => s.id === id);
+    if (submissionIndex === -1) {
+      return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
+    }
+
+    if (action === 'approve') {
+      submissions[submissionIndex] = {
+        ...submissions[submissionIndex],
+        status: 'approved',
+        approved: true,
+        hidden: false, // Make visible when approved
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Submission approved:', id);
+      return NextResponse.json({ message: 'Submission approved successfully' });
+    } else if (action === 'reject') {
+      submissions[submissionIndex] = {
+        ...submissions[submissionIndex],
+        status: 'rejected',
+        approved: false,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Submission rejected:', id);
+      return NextResponse.json({ message: 'Submission rejected successfully' });
+    } else {
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    }
+  } catch (error) {
+    console.error('Error in PUT /api/submissions:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// DELETE /api/submissions - Delete a submission
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -219,15 +215,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Submission ID is required' }, { status: 400 });
     }
 
-    const { error } = await supabase
-      .from('submissions')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting submission:', error);
-      return NextResponse.json({ error: 'Failed to delete submission' }, { status: 500 });
+    const submissionIndex = submissions.findIndex(s => s.id === id);
+    if (submissionIndex === -1) {
+      return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
     }
+
+    submissions.splice(submissionIndex, 1);
+    console.log('Submission deleted:', id);
 
     return NextResponse.json({ message: 'Submission deleted successfully' });
   } catch (error) {

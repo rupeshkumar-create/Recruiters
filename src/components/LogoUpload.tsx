@@ -112,7 +112,7 @@ export default function LogoUpload({ currentLogo, onLogoChange, className = '' }
               type="button"
               onClick={handleClick}
               disabled={uploading}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {uploading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

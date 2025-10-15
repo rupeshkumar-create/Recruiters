@@ -84,7 +84,7 @@ export default function AnalyticsPage() {
 
   const getEventColor = (eventType: string) => {
     switch (eventType) {
-      case 'click': return 'text-blue-600 bg-blue-100'
+      case 'click': return 'text-orange-600 bg-orange-100'
       case 'visit': return 'text-green-600 bg-green-100'
       case 'share': 
       case 'linkedin_share':
@@ -192,8 +192,8 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <BarChart3 className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <BarChart3 className="w-5 h-5 text-orange-600" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">Total Events</p>

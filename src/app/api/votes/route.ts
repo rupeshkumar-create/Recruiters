@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServiceSupabase } from '../../../lib/supabase';
 
-const supabase = getServiceSupabase();
-
-// GET /api/votes - Get votes for a tool or all votes (admin)
+// GET /api/votes - Get votes for a tool (local storage)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -11,195 +8,93 @@ export async function GET(request: NextRequest) {
     const admin = searchParams.get('admin');
     const voteId = searchParams.get('voteId');
 
-    // Check if Supabase is configured
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
-      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+    // Mock votes data
+    const mockVotes = [
+      {
+        id: '1',
+        tool_id: toolId || '6',
+        vote_type: 'up',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: '2', 
+        tool_id: toolId || '6',
+        vote_type: 'down',
+        created_at: new Date().toISOString()
+      }
+    ];
+
+    if (admin === 'true') {
+      return NextResponse.json(mockVotes);
     }
 
-    // Admin endpoint - get all votes or votes for specific tool
-    if (admin === 'true') {
-      let query = supabase
-        .from('votes')
-        .select('*')
-        .order('created_at', { ascending: false });
+    if (voteId) {
+      const vote = mockVotes.find(v => v.id === voteId);
+      return NextResponse.json(vote || null);
+    }
 
-      if (toolId && toolId !== 'all') {
-        query = query.eq('tool_id', toolId);
-      }
-
-      const { data: votes, error } = await query;
-
-      if (error) {
-        console.error('Error fetching votes:', error);
-        return NextResponse.json({ error: 'Failed to fetch votes' }, { status: 500 });
-      }
-
-      // Count upvotes and downvotes
-      const upvotes = votes?.filter(vote => vote.vote_type === 'up').length || 0;
-      const downvotes = votes?.filter(vote => vote.vote_type === 'down').length || 0;
-
+    if (toolId) {
+      const toolVotes = mockVotes.filter(v => v.tool_id === toolId);
+      const upVotes = toolVotes.filter(v => v.vote_type === 'up').length;
+      const downVotes = toolVotes.filter(v => v.vote_type === 'down').length;
+      
       return NextResponse.json({
-        upvotes,
-        downvotes,
-        total: upvotes + downvotes,
-        votes: votes || []
+        upVotes,
+        downVotes,
+        totalVotes: upVotes + downVotes,
+        score: upVotes - downVotes
       });
     }
 
-    // Regular endpoint - requires toolId
-    if (!toolId) {
-      return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 });
-    }
-
-    // Get all votes for the tool
-    const { data: votes, error } = await supabase
-      .from('votes')
-      .select('*')
-      .eq('tool_id', toolId);
-
-    if (error) {
-      console.error('Error fetching votes:', error);
-      return NextResponse.json({ error: 'Failed to fetch votes' }, { status: 500 });
-    }
-
-    // Count upvotes and downvotes
-    const upvotes = votes?.filter(vote => vote.vote_type === 'up').length || 0;
-    const downvotes = votes?.filter(vote => vote.vote_type === 'down').length || 0;
-
-    return NextResponse.json({
-      upvotes,
-      downvotes,
-      total: upvotes + downvotes,
-      votes: votes || []
-    });
+    return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 });
   } catch (error) {
     console.error('Error in GET /api/votes:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// POST /api/votes - Submit a vote
+// POST /api/votes - Cast a vote (local storage)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { toolId, userEmail, userName, voteType, userData } = body;
+    const { toolId, voteType } = body;
 
-    if (!toolId || !userEmail || !userName || !voteType) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!toolId || !voteType) {
+      return NextResponse.json({ error: 'Tool ID and vote type are required' }, { status: 400 });
     }
 
     if (!['up', 'down'].includes(voteType)) {
-      return NextResponse.json({ error: 'Invalid vote type' }, { status: 400 });
+      return NextResponse.json({ error: 'Vote type must be "up" or "down"' }, { status: 400 });
     }
 
-    // Check if Supabase is configured
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
-      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
-    }
+    // Mock vote record
+    const vote = {
+      id: Date.now().toString(),
+      tool_id: toolId,
+      vote_type: voteType,
+      created_at: new Date().toISOString()
+    };
 
-    // Check if user has already voted for this tool
-    const { data: existingVote } = await supabase
-      .from('votes')
-      .select('*')
-      .eq('tool_id', toolId)
-      .eq('user_email', userEmail)
-      .single();
+    console.log('Vote recorded:', vote);
 
-    if (existingVote) {
-      // Update existing vote
-      const { data: updatedVote, error: updateError } = await supabase
-        .from('votes')
-        .update({
-          vote_type: voteType,
-          user_name: userName,
-          user_company: userData?.company || '',
-          user_title: userData?.title || '',
-          user_data: userData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('tool_id', toolId)
-        .eq('user_email', userEmail)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error('Error updating vote:', updateError);
-        return NextResponse.json({ error: 'Failed to update vote' }, { status: 500 });
-      }
-
-      return NextResponse.json(updatedVote, { status: 200 });
-    } else {
-      // Create new vote
-      const { data: newVote, error: insertError } = await supabase
-        .from('votes')
-        .insert({
-          tool_id: toolId,
-          user_email: userEmail,
-          user_name: userName,
-          user_company: userData?.company || '',
-          user_title: userData?.title || '',
-          vote_type: voteType,
-          user_data: userData
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('Error creating vote:', insertError);
-        return NextResponse.json({ error: 'Failed to create vote' }, { status: 500 });
-      }
-
-      return NextResponse.json(newVote, { status: 201 });
-    }
+    return NextResponse.json(vote, { status: 201 });
   } catch (error) {
     console.error('Error in POST /api/votes:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// DELETE /api/votes - Remove a vote
+// DELETE /api/votes - Remove a vote (local storage)
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const toolId = searchParams.get('toolId');
-    const userEmail = searchParams.get('userEmail');
     const voteId = searchParams.get('voteId');
 
-    // Check if Supabase is configured
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
-      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+    if (!voteId) {
+      return NextResponse.json({ error: 'Vote ID is required' }, { status: 400 });
     }
 
-    // Admin deletion by vote ID
-    if (voteId) {
-      const { error } = await supabase
-        .from('votes')
-        .delete()
-        .eq('id', voteId);
-
-      if (error) {
-        console.error('Error deleting vote:', error);
-        return NextResponse.json({ error: 'Failed to delete vote' }, { status: 500 });
-      }
-
-      return NextResponse.json({ message: 'Vote deleted successfully' });
-    }
-
-    // User deletion by tool ID and email
-    if (!toolId || !userEmail) {
-      return NextResponse.json({ error: 'Tool ID and user email are required' }, { status: 400 });
-    }
-
-    const { error } = await supabase
-      .from('votes')
-      .delete()
-      .eq('tool_id', toolId)
-      .eq('user_email', userEmail);
-
-    if (error) {
-      console.error('Error deleting vote:', error);
-      return NextResponse.json({ error: 'Failed to delete vote' }, { status: 500 });
-    }
+    console.log('Vote deleted:', voteId);
 
     return NextResponse.json({ message: 'Vote deleted successfully' });
   } catch (error) {

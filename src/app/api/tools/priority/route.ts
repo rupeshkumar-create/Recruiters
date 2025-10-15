@@ -1,104 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServiceSupabase } from '../../../../lib/supabase';
 
-const supabase = getServiceSupabase();
-
-// PUT /api/tools/priority - Update priority order for multiple tools
+// PUT /api/tools/priority - Update tool priority order (local storage)
 export async function PUT(request: NextRequest) {
   try {
-    // Check if Supabase is configured
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
-      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
-    }
-
     const body = await request.json();
-    const { toolPriorities } = body; // Array of { id, priority_order }
+    const { toolId, priorityOrder } = body;
 
-    if (!Array.isArray(toolPriorities)) {
-      return NextResponse.json({ error: 'toolPriorities must be an array' }, { status: 400 });
+    if (!toolId || priorityOrder === undefined) {
+      return NextResponse.json({ error: 'Tool ID and priority order are required' }, { status: 400 });
     }
 
-    // Validate that we have at most 15 priority tools
-    const priorityTools = toolPriorities.filter(tool => tool.priority_order !== null && tool.priority_order !== undefined);
-    if (priorityTools.length > 15) {
-      return NextResponse.json({ error: 'Maximum 15 tools can have priority order' }, { status: 400 });
-    }
+    // Mock priority update
+    const updatedTool = {
+      id: toolId,
+      priority_order: priorityOrder,
+      updated_at: new Date().toISOString()
+    };
 
-    // First, clear all existing priority orders to avoid unique constraint conflicts
-    const { error: clearError } = await supabase
-      .from('tools')
-      .update({ priority_order: null })
-      .not('priority_order', 'is', null);
+    console.log('Tool priority updated:', updatedTool);
 
-    if (clearError) {
-      console.error('Error clearing priority orders:', clearError);
-      throw clearError;
-    }
-
-    // Then update each tool's priority order sequentially to avoid conflicts
-    for (const { id, priority_order } of toolPriorities) {
-      if (priority_order !== null && priority_order !== undefined) {
-        const { error } = await supabase
-          .from('tools')
-          .update({ priority_order })
-          .eq('id', id);
-        
-        if (error) {
-          console.error(`Error updating tool ${id}:`, error);
-          throw error;
-        }
-      }
-    }
-
-    return NextResponse.json({ message: 'Priority order updated successfully' });
+    return NextResponse.json(updatedTool);
   } catch (error) {
     console.error('Error in PUT /api/tools/priority:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-// GET /api/tools/priority - Get tools with their current priority order
-export async function GET(request: NextRequest) {
-  try {
-    // Check if Supabase is configured
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
-      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
-    }
-
-    const { data: tools, error } = await supabase
-      .from('tools')
-      .select(`
-        id,
-        name,
-        tagline,
-        logo,
-        priority_order,
-        created_at,
-        tool_categories!inner(
-          categories!inner(
-            name
-          )
-        )
-      `)
-      .eq('approved', true)
-      .eq('hidden', false)
-      .order('priority_order', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching tools for priority:', error);
-      return NextResponse.json({ error: 'Failed to fetch tools' }, { status: 500 });
-    }
-
-    // Transform the data
-    const transformedTools = tools?.map(tool => ({
-      ...tool,
-      categories: tool.tool_categories?.map((tc: any) => tc.categories.name).join(', ') || ''
-    })) || [];
-
-    return NextResponse.json(transformedTools);
-  } catch (error) {
-    console.error('Error in GET /api/tools/priority:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

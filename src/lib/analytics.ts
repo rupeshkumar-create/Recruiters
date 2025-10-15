@@ -1,26 +1,26 @@
-// Analytics tracking utility
+// Analytics tracking utility - Local storage version
 export const trackEvent = async (toolId: string, eventType: string, metadata: any = {}) => {
   try {
-    // Only track in production or when explicitly enabled
-    if (process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_ENABLE_ANALYTICS) {
-      console.log('Analytics tracking (dev):', { toolId, eventType, metadata })
-      return
-    }
-
-    await fetch('/api/analytics', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        toolId,
-        eventType,
-        metadata
-      })
-    })
+    // Store analytics in local storage
+    const analyticsKey = 'ai_staffing_analytics';
+    const existingData = localStorage.getItem(analyticsKey);
+    const analytics = existingData ? JSON.parse(existingData) : [];
+    
+    const newEvent = {
+      id: Date.now().toString(),
+      toolId,
+      eventType,
+      metadata,
+      timestamp: new Date().toISOString()
+    };
+    
+    analytics.push(newEvent);
+    localStorage.setItem(analyticsKey, JSON.stringify(analytics));
+    
+    console.log('Analytics tracked:', newEvent);
   } catch (error) {
     // Silently fail - don't break the user experience
-    console.error('Analytics tracking failed:', error)
+    console.error('Analytics tracking failed:', error);
   }
 }
 

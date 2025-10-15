@@ -2,740 +2,835 @@
 
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { ArrowLeft, ExternalLink, Tag, Star, TrendingUp, Clock, Target, Users, Calendar, MapPin, ChevronUp, MessageCircle, Share2, Copy, Heart, ThumbsUp, ThumbsDown, Linkedin, X } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, Globe, MapPin, Calendar, TrendingUp, Award, CheckCircle, Star, Clock, Share2, Linkedin, MessageSquare, Users } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
-import VotingSection from '../../../components/VotingSection'
-import CommentSection from '../../../components/CommentSection'
-import FeaturedTag from '../../../components/FeaturedTag'
-import ToolImage from '../../../components/ToolImage'
-import UserAuthForm, { UserData } from '../../../components/UserAuthForm'
 import Navigation from '../../../components/Navigation'
-import EmailSubscription from '../../../components/EmailSubscription'
+import TestimonialForm from '../../../components/TestimonialForm'
 import { useState, useEffect } from 'react'
-import { trackToolVisit, trackToolClick, trackToolShare } from '../../../lib/analytics'
+import { csvRecruiters, Recruiter } from '../../../lib/data'
 
-interface Tool {
-  id: string;
-  name: string;
-  url: string;
-  tagline: string;
-  content: string;
-  description?: string;
-  categories: string;
-  logo: string;
-  slug: string;
-  featured: boolean;
-  hidden?: boolean;
-  approved?: boolean;
-}
-
-interface ToolPageProps {
+interface RecruiterPageProps {
   params: {
     slug: string
   }
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      duration: 0.6,
-      staggerChildren: 0.1
-    }
-  }
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5 }
-  }
-}
-
-const cardHoverVariants = {
-  hover: {
-    scale: 1.01,
-    transition: { duration: 0.2 }
-  }
-}
-
-const buttonHoverVariants = {
-  hover: {
-    scale: 1.02,
-    transition: { duration: 0.2 }
-  },
-  tap: {
-    scale: 0.98
-  }
-}
-
-export default function ToolPage({ params }: ToolPageProps) {
-  const [tool, setTool] = useState<Tool | null>(null)
+export default function RecruiterProfile({ params }: RecruiterPageProps) {
+  const [recruiter, setRecruiter] = useState<Recruiter | null>(null)
   const [loading, setLoading] = useState(true)
-  const [featuredTools, setFeaturedTools] = useState<Tool[]>([])
-  const [similarTools, setSimilarTools] = useState<Tool[]>([])
-  const [hasVoted, setHasVoted] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [shares, setShares] = useState(0)
-  const [votingCounts, setVotingCounts] = useState({ upvotes: 0, downvotes: 0 })
-  const [commentCount, setCommentCount] = useState(0)
-  const [showAuthForm, setShowAuthForm] = useState(false)
-
-  // Helper function to format category names with proper case
-  const formatCategoryName = (category: string): string => {
-    return category
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ')
-  }
-
-  // Fetch tool data from API
-  useEffect(() => {
-    const fetchTool = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch(`/api/tools/${params.slug}`)
-        
-        if (response.status === 404) {
-          notFound()
-          return
-        }
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-          console.error('API Error:', response.status, errorData)
-          throw new Error(`API Error: ${response.status} - ${errorData.error || 'Failed to fetch tool'}`)
-        }
-        
-        const toolData = await response.json()
-        setTool(toolData)
-        
-        // Track tool visit
-        trackToolVisit(toolData.id, toolData.name)
-        
-        // Fetch featured tools
-        const featuredResponse = await fetch('/api/tools?featured=true')
-        if (featuredResponse.ok) {
-          const featured = await featuredResponse.json()
-          setFeaturedTools(featured.filter((t: Tool) => t.id !== toolData.id).slice(0, 5))
-        }
-        
-        // Fetch similar tools (same category, then all tools if not enough)
-        let similarToolsFound: Tool[] = []
-        
-        if (toolData.categories) {
-          // First try to get tools from the same category
-          const firstCategory = toolData.categories.split(',')[0].trim()
-          const similarResponse = await fetch(`/api/tools?category=${encodeURIComponent(firstCategory)}`)
-          if (similarResponse.ok) {
-            const similar = await similarResponse.json()
-            similarToolsFound = similar.filter((t: Tool) => t.id !== toolData.id)
-          }
-        }
-        
-        // If we don't have enough similar tools, get more from all tools
-        if (similarToolsFound.length < 3) {
-          const allToolsResponse = await fetch('/api/tools')
-          if (allToolsResponse.ok) {
-            const allTools = await allToolsResponse.json()
-            const remainingTools = allTools.filter((t: Tool) => 
-              t.id !== toolData.id && 
-              !similarToolsFound.some(existing => existing.id === t.id)
-            )
-            
-            // Add random tools to fill up to 3
-            const additionalNeeded = 3 - similarToolsFound.length
-            const shuffled = remainingTools.sort(() => 0.5 - Math.random())
-            similarToolsFound = [...similarToolsFound, ...shuffled.slice(0, additionalNeeded)]
-          }
-        }
-        
-        setSimilarTools(similarToolsFound.slice(0, 3))
-        
-      } catch (error) {
-        console.error('Error fetching tool:', error)
-        // Only call notFound() for actual 404s, not network errors
-        if (error instanceof Error && error.message.includes('404')) {
-          notFound()
-        }
-        // For other errors, just set loading to false and let the component handle it
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    fetchTool()
-  }, [params.slug])
+  const [showTestimonialForm, setShowTestimonialForm] = useState(false)
+  const [shareMessage, setShareMessage] = useState('')
+  const [similarRecruiters, setSimilarRecruiters] = useState<Recruiter[]>([])
 
   useEffect(() => {
-    if (!tool?.id) return
-    
-    const loadVotesAndComments = async () => {
-      try {
-        // Load votes from API
-        const votesResponse = await fetch(`/api/votes?toolId=${tool.id}`)
-        if (votesResponse.ok) {
-          const votesData = await votesResponse.json()
-          setVotingCounts({ upvotes: votesData.upvotes, downvotes: votesData.downvotes })
-          
-          // Check if current user has voted
-          const userData = JSON.parse(localStorage.getItem('userSession') || 'null')
-          if (userData?.email) {
-            const userVote = votesData.votes.find((vote: any) => vote.user_email === userData.email)
-            setHasVoted(!!userVote && userVote.vote_type === 'up')
-          }
-        }
-        
-        // Load approved comments from API
-        const commentsResponse = await fetch(`/api/comments?toolId=${tool.id}&status=approved`)
-        if (commentsResponse.ok) {
-          const commentsData = await commentsResponse.json()
-          setCommentCount(commentsData.length)
-        } else {
-          // Fallback to localStorage for backward compatibility
-          const commentData = JSON.parse(localStorage.getItem(`comments_${tool.id}`) || '[]')
-          setCommentCount(commentData.length)
-        }
-        
-        // Load shares from localStorage
-        const savedShares = localStorage.getItem(`tool-shares-${tool.id}`)
-        if (savedShares) setShares(parseInt(savedShares))
-        
-      } catch (error) {
-        console.error('Error loading votes and comments:', error)
-      }
-    }
-    
-    loadVotesAndComments()
-    
-    // Set up polling to check for updates
-    const interval = setInterval(loadVotesAndComments, 5000)
-    
-    return () => clearInterval(interval)
-  }, [tool?.id])
-
-  const handleVote = async () => {
-    if (!tool?.id) return
-    
-    // Import user session hook functionality
-    const userData = JSON.parse(localStorage.getItem('userSession') || 'null')
-    
-    if (!userData) {
-      // Show auth form
-      setShowAuthForm(true)
-      return
-    }
-    
-    if (!hasVoted) {
-      try {
-        const response = await fetch('/api/votes', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            toolId: tool.id,
-            userEmail: userData.email,
-            userName: `${userData.firstName} ${userData.lastName}`,
-            voteType: 'up',
-            userData
-          })
-        })
-        
-        if (response.ok) {
-          setHasVoted(true)
-          setVotingCounts(prev => ({ ...prev, upvotes: prev.upvotes + 1 }))
-          
-          // Show thank you message
-          alert('🎉 Thank you for your vote! Your feedback helps other users discover great tools.')
-        }
-      } catch (error) {
-        console.error('Error submitting vote:', error)
-      }
-    } else {
-      try {
-        const response = await fetch(`/api/votes?toolId=${tool.id}&userEmail=${userData.email}`, {
-          method: 'DELETE'
-        })
-        
-        if (response.ok) {
-          setHasVoted(false)
-          setVotingCounts(prev => ({ ...prev, upvotes: Math.max(0, prev.upvotes - 1) }))
-        }
-      } catch (error) {
-        console.error('Error removing vote:', error)
-      }
-    }
-  }
-
-
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(window.location.href)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-    // Track share
-    if (tool) {
-      trackToolShare(tool.id, 'copy', tool.name)
-    }
-    // Increment share count
-    const newShares = shares + 1
-    setShares(newShares)
-    localStorage.setItem(`tool-shares-${tool?.id}`, newShares.toString())
-  }
-
-  const shareOnLinkedIn = () => {
-    const url = encodeURIComponent(window.location.href)
-    const text = encodeURIComponent(`Check out ${tool?.name}: ${tool?.tagline}`)
-    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}&title=${text}`, '_blank')
-    // Track share
-    if (tool) {
-      trackToolShare(tool.id, 'linkedin', tool.name)
-    }
-    // Increment share count
-    const newShares = shares + 1
-    setShares(newShares)
-    localStorage.setItem(`tool-shares-${tool?.id}`, newShares.toString())
-  }
-
-  const shareOnTwitter = () => {
-    const url = encodeURIComponent(window.location.href)
-    const text = encodeURIComponent(`Check out ${tool?.name}: ${tool?.tagline}`)
-    window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank')
-    // Track share
-    if (tool) {
-      trackToolShare(tool.id, 'twitter', tool.name)
-    }
-    // Increment share count
-    const newShares = shares + 1
-    setShares(newShares)
-    localStorage.setItem(`tool-shares-${tool?.id}`, newShares.toString())
-  }
-
-  const handleAuthSubmit = async (userData: UserData) => {
-    // Store user data in session
-    localStorage.setItem('userSession', JSON.stringify(userData))
-    setShowAuthForm(false)
-    
-    // Submit the vote directly after authentication
-    if (!tool?.id) return
-    
     try {
-      const response = await fetch('/api/votes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          toolId: tool.id,
-          userEmail: userData.email,
-          userName: `${userData.firstName} ${userData.lastName}`,
-          voteType: 'up',
-          userData
-        })
-      })
+      console.log('Looking for recruiter with slug:', params.slug)
+      console.log('Available recruiters:', csvRecruiters.length)
       
-      if (response.ok) {
-        setHasVoted(true)
-        setVotingCounts(prev => ({ ...prev, upvotes: prev.upvotes + 1 }))
+      // Find recruiter by slug
+      const foundRecruiter = csvRecruiters.find(r => r.slug === params.slug)
+      console.log('Found recruiter:', foundRecruiter)
+      
+      if (foundRecruiter) {
+        setRecruiter(foundRecruiter)
         
-        // Show thank you message
-        alert('🎉 Thank you for your vote! Your feedback helps other users discover great tools.')
+        // Find similar recruiters (same specialization, excluding current)
+        const similar = csvRecruiters
+          .filter(r => 
+            r.id !== foundRecruiter.id && 
+            r.specialization === foundRecruiter.specialization
+          )
+          .slice(0, 5)
+        
+        // If not enough similar, add random ones
+        if (similar.length < 5) {
+          const additional = csvRecruiters
+            .filter(r => 
+              r.id !== foundRecruiter.id && 
+              !similar.find(s => s.id === r.id)
+            )
+            .slice(0, 5 - similar.length)
+          similar.push(...additional)
+        }
+        
+        setSimilarRecruiters(similar)
       }
     } catch (error) {
-      console.error('Error submitting vote:', error)
+      console.error('Error in useEffect:', error)
+    } finally {
+      setLoading(false)
     }
-  }
+  }, [params.slug])
 
   if (loading) {
     return (
-      <div className="min-h-screen muted-gradient flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="muted-text-light">Loading tool...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-orange-200 border-t-orange-600 mx-auto mb-6"></div>
+          <p className="text-gray-600">Loading recruiter profile...</p>
         </div>
       </div>
     )
   }
 
-  if (!tool) {
-    return (
-      <div className="min-h-screen muted-gradient flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Tool Not Found</h1>
-          <p className="text-gray-600 mb-6">The tool you're looking for doesn't exist or there was an error loading it.</p>
-          <Link href="/" className="inline-flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Directory
-          </Link>
-        </div>
-      </div>
-    )
+  if (!recruiter) {
+    notFound()
+  }
+
+  const getBadgeColor = (badge?: string) => {
+    switch (badge) {
+      case 'verified': return 'bg-green-100 text-green-800 border-green-200'
+      case 'top-rated': return 'bg-orange-100 text-orange-800 border-orange-200'
+      case 'rising-star': return 'bg-purple-100 text-purple-800 border-purple-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getBadgeIcon = (badge?: string) => {
+    switch (badge) {
+      case 'verified': return <CheckCircle className="w-3 h-3" />
+      case 'top-rated': return <Star className="w-3 h-3" />
+      case 'rising-star': return <TrendingUp className="w-3 h-3" />
+      default: return null
+    }
+  }
+
+  const handleContactClick = (type: string) => {
+    if (typeof window === 'undefined') return
+    
+    switch (type) {
+      case 'email':
+        window.location.href = `mailto:${recruiter.email}`
+        break
+      case 'linkedin':
+        window.open(recruiter.linkedin, '_blank')
+        break
+      case 'phone':
+        window.location.href = `tel:${recruiter.phone}`
+        break
+      case 'website':
+        if (recruiter.website) {
+          window.open(recruiter.website, '_blank')
+        }
+        break
+      case 'share':
+        handleShare()
+        break
+    }
+  }
+
+  const handleShare = async () => {
+    if (typeof window === 'undefined') return
+    
+    const shareData = {
+      title: `${recruiter?.name} - ${recruiter?.jobTitle}`,
+      text: `Check out ${recruiter?.name}, a ${recruiter?.specialization} recruiter at ${recruiter?.company}`,
+      url: window.location.href
+    }
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData)
+      } catch (error) {
+        console.log('Error sharing:', error)
+        copyToClipboard()
+      }
+    } else {
+      copyToClipboard()
+    }
+  }
+
+  const copyToClipboard = () => {
+    if (typeof window === 'undefined' || !navigator.clipboard) return
+    
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setShareMessage('Profile link copied to clipboard!')
+      setTimeout(() => setShareMessage(''), 3000)
+    }).catch(() => {
+      setShareMessage('Unable to copy link')
+      setTimeout(() => setShareMessage(''), 3000)
+    })
   }
 
   return (
-    <div className="min-h-screen muted-gradient">
-      <Navigation onSubmitToolClick={() => setShowAuthForm(true)} />
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50">
+      <Navigation onSubmitToolClick={() => {}} />
       
-      <motion.div
-        className="container mx-auto px-4 py-8 max-w-6xl"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {/* Header */}
-        <motion.div variants={itemVariants} className="mb-8">
-          <Link href="/">
-            <motion.div
-              className="inline-flex items-center gap-2 muted-text-light hover:orange-accent transition-colors mb-6"
-              whileHover={{ x: -5 }}
-              transition={{ duration: 0.2 }}
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Directory
-            </motion.div>
-          </Link>
-        </motion.div>
-
-        {/* Hero Section */}
-        <motion.div variants={itemVariants} className="mb-8">
-          <div className="flex flex-col lg:flex-row gap-5 items-start">
-            {/* Logo Column */}
-            <motion.div
-              className="w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 relative flex-shrink-0 mx-auto lg:mx-0"
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.3 }}
-            >
-              {tool.featured && <FeaturedTag className="top-1 right-1" />}
-              <ToolImage 
-                src={tool.logo}
-                alt={`${tool.name} logo`}
-                name={tool.name}
-                className="w-full h-full rounded-2xl"
-                size="lg"
-              />
-            </motion.div>
-            
-            {/* Content Column */}
-            <div className="flex-1 min-w-0">
-              <motion.h1
-                className="text-3xl sm:text-4xl lg:text-5xl font-bold muted-text text-center lg:text-left break-words hyphens-auto leading-tight mb-2"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
-              >
-                {tool.name}
-              </motion.h1>
-              
-              <motion.p
-                className="text-lg sm:text-xl muted-text-light mb-1.5 leading-relaxed text-center lg:text-left max-w-4xl"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3, duration: 0.6 }}
-              >
-                {tool.tagline}
-              </motion.p>
-              
-              <motion.div
-                className="flex flex-wrap gap-3 mb-3 justify-center lg:justify-start"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.6 }}
-              >
-                {tool.categories.split(',').map((category, index) => (
-                  <motion.span
-                    key={category.trim()}
-                    className="px-3 py-1 bg-gray-100 text-gray-600 border border-gray-200 rounded-full text-sm font-medium flex items-center gap-1 hover:bg-gray-200 hover:text-gray-700 transition-colors"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.5 + index * 0.1, duration: 0.3 }}
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <Tag className="w-3 h-3" />
-                    {formatCategoryName(category.trim())}
-                  </motion.span>
-                ))}
-              </motion.div>
-              <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-center lg:items-start lg:justify-start mt-4">
-                <motion.div
-                  variants={buttonHoverVariants}
-                  whileHover="hover"
-                  whileTap="tap"
-                >
-                  <Button
-                    asChild
-                    className="orange-bg hover:bg-orange-600 text-white px-8 py-3 text-lg font-semibold shadow-sm hover:shadow-md transition-all duration-200"
-                  >
-                    <a 
-                      href={tool.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      onClick={() => trackToolClick(tool.id, tool.name)}
-                    >
-                      Visit Website
-                      <ExternalLink className="w-5 h-5 ml-2" />
-                    </a>
-                  </Button>
-                </motion.div>
-                
-                {/* Social Sharing */}
-                <motion.div
-                  className="flex gap-3"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6, duration: 0.6 }}
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={shareOnLinkedIn}
-                    className="hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 p-2.5"
-                  >
-                    <Linkedin className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={shareOnTwitter}
-                    className="hover:bg-gray-50 hover:border-gray-300 hover:text-gray-600 transition-all duration-200 p-2.5"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={copyToClipboard}
-                    className="hover:bg-green-50 hover:border-green-300 hover:text-green-600 transition-all duration-200 p-2.5"
-                  >
-                    <Copy className="w-4 h-4" />
-                    {copied && <span className="ml-1 text-xs font-medium">Copied!</span>}
-                  </Button>
-                </motion.div>
-              </div>
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Animated Back Button */}
+        <div className="mb-8 transform transition-all duration-300 hover:translate-x-1">
+          <Link href="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-orange-600 transition-all duration-200 group">
+            <div className="p-2 rounded-full bg-white shadow-sm group-hover:shadow-md transition-all duration-200 group-hover:bg-orange-50">
+              <ArrowLeft className="w-4 h-4 transform group-hover:-translate-x-0.5 transition-transform duration-200" />
             </div>
-            
-            {/* Voting Section Column */}
-            <motion.div
-              className="flex flex-col items-center muted-card rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-3 min-w-[80px] flex-shrink-0 mx-auto lg:mx-0"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.4, duration: 0.6 }}
-            >
-              <motion.button
-                onClick={handleVote}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${
-                  hasVoted 
-                    ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200' 
-                    : 'bg-neutral-50 muted-text-light hover:bg-neutral-100 hover:text-neutral-700 border border-neutral-200 hover:border-neutral-300'
-                }`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <ChevronUp className="w-5 h-5" />
-              </motion.button>
-              <span className="text-lg font-bold muted-text mt-0.5">{votingCounts.upvotes}</span>
-              <span className="text-xs muted-text-light font-medium">helpful</span>
-            </motion.div>
-          </div>
-        </motion.div>
+            <span className="font-medium">Back to Directory</span>
+          </Link>
+        </div>
 
-
-
-        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column */}
+          {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
-            {/* About Section */}
-            <motion.div variants={itemVariants}>
-              <Card className="muted-card border-0 shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-2xl muted-text">About {tool.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="muted-text-light leading-relaxed text-lg break-words overflow-wrap-anywhere">
-                      {tool.content}
-                    </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Voting Section */}
-            <motion.div variants={itemVariants}>
-              <VotingSection 
-                toolId={tool.id} 
-                toolName={tool.name}
-                initialUpvotes={votingCounts.upvotes}
-                initialDownvotes={votingCounts.downvotes}
-onVoteChange={(upvotes, downvotes) => {
-                  setVotingCounts({ upvotes, downvotes })
-                }}
-              />
-            </motion.div>
-
-            {/* Comments Section */}
-            <motion.div variants={itemVariants}>
-              <CommentSection 
-                toolId={tool.id} 
-                toolName={tool.name}
-                onCommentCountChange={(count) => setCommentCount(count)}
-              />
-            </motion.div>
-
-            {/* Similar Tools */}
-            {similarTools.length > 0 && (
-              <motion.div variants={itemVariants}>
-                <Card className="muted-card border-0 shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="text-2xl muted-text">Similar Tools</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {similarTools.map((similarTool) => (
-                        <Link key={similarTool.id} href={`/tool/${similarTool.slug}`}>
-                          <motion.div
-                            className="p-4 border border-neutral-200 rounded-xl hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 cursor-pointer bg-white hover:bg-gradient-to-br hover:from-orange-50/30 hover:to-neutral-50/20 group h-full"
-                            whileHover={{ scale: 1.02, y: -3 }}
-                          >
-                            <div className="flex flex-col items-center text-center gap-3 h-full">
-                              <ToolImage 
-                                src={similarTool.logo}
-                                alt={similarTool.name}
-                                name={similarTool.name}
-                                size="md"
-                                className="bg-gray-50 rounded-lg p-2 shadow-sm"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold muted-text text-sm group-hover:orange-accent transition-colors line-clamp-2 leading-tight mb-1">{similarTool.name}</h4>
-                                <p className="muted-text-light text-xs line-clamp-2 leading-relaxed">{similarTool.tagline}</p>
-                              </div>
-                            </div>
-                          </motion.div>
-                        </Link>
-                      ))}
+            {/* Simple Hero Section */}
+            <Card className="p-8">
+              <div className="flex flex-col md:flex-row gap-6">
+                {/* Avatar */}
+                <div className="flex-shrink-0">
+                  <img 
+                    src={recruiter.avatar}
+                    alt={recruiter.name}
+                    className="w-32 h-32 rounded-full object-cover shadow-lg"
+                  />
+                </div>
+                
+                {/* Basic Info */}
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-start gap-3 mb-4">
+                    <h1 className="text-3xl font-bold text-gray-900">{recruiter.name}</h1>
+                    {recruiter.badge && (
+                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border ${getBadgeColor(recruiter.badge)}`}>
+                        {getBadgeIcon(recruiter.badge)}
+                        {recruiter.badge.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {recruiter.jobTitle && (
+                    <p className="text-xl text-orange-600 font-semibold mb-2">{recruiter.jobTitle}</p>
+                  )}
+                  <p className="text-lg text-gray-700 mb-4">{recruiter.company}</p>
+                  
+                  <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-6">
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {recruiter.location}
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
+                    {recruiter.remoteAvailable && (
+                      <div className="flex items-center gap-1">
+                        <Globe className="w-4 h-4" />
+                        Remote Available
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      {recruiter.experience} experience
+                    </div>
+                  </div>
 
-          </div>
+                  {/* Contact Buttons - Icons Only */}
+                  <div className="flex flex-wrap gap-3">
+                    <Button 
+                      size="sm"
+                      className="bg-orange-600 hover:bg-orange-700 p-2"
+                      onClick={() => handleContactClick('email')}
+                      title="Send Email"
+                    >
+                      <Mail className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      className="p-2"
+                      onClick={() => handleContactClick('linkedin')}
+                      title="LinkedIn Profile"
+                    >
+                      <Linkedin className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      className="p-2"
+                      onClick={() => handleContactClick('phone')}
+                      title="Call"
+                    >
+                      <Phone className="w-4 h-4" />
+                    </Button>
+                    {recruiter.website && (
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        className="p-2"
+                        onClick={() => handleContactClick('website')}
+                        title="Website"
+                      >
+                        <Globe className="w-4 h-4" />
+                      </Button>
+                    )}
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      className="p-2"
+                      onClick={() => handleContactClick('share')}
+                      title="Share Profile"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* Share Message */}
+                  {shareMessage && (
+                    <div className="mt-2 text-sm text-green-600 font-medium">
+                      {shareMessage}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-          {/* Right Column */}
-          <div className="space-y-6">
-
-
-            {/* Featured Tools Slider */}
-            {featuredTools.length > 0 && (
-              <motion.div variants={itemVariants}>
-                <Card className="muted-card border-0 shadow-sm">
+              {/* Rating Section */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i} 
+                        className={`w-5 h-5 ${i < Math.floor(recruiter.rating || 0) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                      />
+                    ))}
+                  </div>
+                  <span className="text-lg font-semibold">{recruiter.rating}</span>
+                  <span className="text-gray-600">({recruiter.reviewCount || 0} reviews)</span>
+                </div>
+              </div>
+            </Card>       
+     {/* Enhanced About Section */}
+            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                <div className="bg-white rounded-xl">
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-lg muted-text flex items-center gap-2">
-                      <Star className="w-4 h-4 text-yellow-500" />
-                      Featured Tools
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <div className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
+                      About
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-8">
-                      {featuredTools.map((featuredTool, index) => (
-                        <Link key={featuredTool.id} href={`/tool/${featuredTool.slug}`}>
-                          <motion.div
-                            className="p-4 mb-4 border border-neutral-100 rounded-lg hover:border-neutral-200 hover:shadow-sm transition-all duration-200 cursor-pointer group muted-card"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.1, duration: 0.3 }}
-                            whileHover={{ scale: 1.005, y: -1 }}
-                            style={{ marginBottom: '24px' }}
-                          >
-                            <div className="flex items-center gap-3">
-                              <ToolImage 
-                                src={featuredTool.logo}
-                                alt={featuredTool.name}
-                                name={featuredTool.name}
-                                size="md"
-                                className="bg-gray-50 rounded-lg p-1.5"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium muted-text text-sm group-hover:orange-accent transition-colors">
-                                  {featuredTool.name}
-                                </h4>
-                                <p className="muted-text-light text-xs mt-0.5 line-clamp-1">
-                                  {featuredTool.tagline}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                              </div>
+                    <p className="text-gray-700 leading-relaxed text-lg">{recruiter.bio}</p>
+                  </CardContent>
+                </div>
+              </div>
+            </Card>
+
+            {/* Enhanced Key Stats */}
+            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                <div className="bg-white rounded-xl">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <div className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
+                      Key Performance Metrics
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                      {[
+                        { value: `${recruiter.placements || 0}+`, label: 'Placements Made', color: 'from-orange-500 to-red-500', bg: 'from-orange-50 to-red-50' },
+                        { value: `${recruiter.avgTimeToHire || 30} days`, label: 'Avg. Time-to-Hire', color: 'from-green-500 to-emerald-500', bg: 'from-green-50 to-emerald-50' },
+                        { value: `${recruiter.candidateSatisfaction || 90}%`, label: 'Candidate Satisfaction', color: 'from-purple-500 to-violet-500', bg: 'from-purple-50 to-violet-50' },
+                        { value: `${recruiter.clientRetention || 85}%`, label: 'Clients Retained', color: 'from-blue-500 to-cyan-500', bg: 'from-blue-50 to-cyan-50' }
+                      ].map((stat, index) => (
+                        <div key={index} className={`relative p-4 rounded-xl bg-gradient-to-br ${stat.bg} transform hover:scale-105 transition-all duration-300 group cursor-pointer`}>
+                          <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300`}></div>
+                          <div className="relative text-center">
+                            <div className={`text-2xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
+                              {stat.value}
                             </div>
-                          </motion.div>
-                        </Link>
+                            <div className="text-sm text-gray-600 mt-1">{stat.label}</div>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </CardContent>
-                </Card>
-              </motion.div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Compact Achievements */}
+            {recruiter.achievements && recruiter.achievements.length > 0 && (
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                  <div className="bg-white rounded-xl">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <div className="w-2 h-6 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
+                        Achievements
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {recruiter.achievements.map((achievement, index) => (
+                          <div key={index} className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg transform hover:scale-[1.01] transition-all duration-200 group">
+                            <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                              <CheckCircle className="w-3 h-3 text-white" />
+                            </div>
+                            <span className="text-gray-700 text-sm leading-snug">{achievement}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </div>
+                </div>
+              </Card>
             )}
 
-            {/* Engagement Stats */}
-            <motion.div variants={itemVariants}>
-              <Card className="muted-card border-0 shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-xl muted-text">Community</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ThumbsUp className="w-4 h-4 orange-accent" />
-                        <span className="muted-text-light">Helpful</span>
+            {/* Enhanced Work Experience */}
+            {recruiter.workExperience && recruiter.workExperience.length > 0 && (
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                  <div className="bg-white rounded-xl">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <div className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
+                        Work Experience
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        {recruiter.workExperience.map((exp, index) => (
+                          <div key={index} className="relative pl-8 pb-6 last:pb-0">
+                            <div className="absolute left-0 top-2 w-4 h-4 bg-gradient-to-r from-orange-500 to-red-500 rounded-full shadow-lg"></div>
+                            {index < recruiter.workExperience!.length - 1 && (
+                              <div className="absolute left-2 top-6 w-0.5 h-full bg-gradient-to-b from-orange-200 to-red-200"></div>
+                            )}
+                            <div className="bg-gradient-to-r from-gray-50 to-orange-50/30 p-4 rounded-xl transform hover:scale-[1.02] transition-all duration-200">
+                              <h4 className="font-semibold text-gray-900 text-lg">{exp.jobTitle}</h4>
+                              <p className="text-orange-600 font-medium">{exp.company}</p>
+                              <p className="text-sm text-gray-600 mb-2">{exp.duration}</p>
+                              {exp.description && (
+                                <p className="text-gray-700 text-sm leading-relaxed">{exp.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <span className="font-bold muted-text">{votingCounts.upvotes}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ThumbsDown className="w-4 h-4 text-red-500" />
-                        <span className="muted-text-light">Not Helpful</span>
-                      </div>
-                      <span className="font-bold muted-text">{votingCounts.downvotes}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <MessageCircle className="w-4 h-4 text-neutral-500" />
-                        <span className="muted-text-light">Comments</span>
-                      </div>
-                      <span className="font-bold muted-text">{commentCount}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Share2 className="w-4 h-4 text-neutral-500" />
-                        <span className="muted-text-light">Shares</span>
-                      </div>
-                      <span className="font-bold muted-text">{shares}</span>
-                    </div>
+                    </CardContent>
                   </div>
-                </CardContent>
+                </div>
               </Card>
-            </motion.div>
+            )}     
+       {/* Enhanced Roles Placed */}
+            {recruiter.rolesPlaced && recruiter.rolesPlaced.length > 0 && (
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                  <div className="bg-white rounded-xl">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <div className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
+                        Roles Placed
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-3">
+                        {recruiter.rolesPlaced.map((role, index) => (
+                          <span 
+                            key={index} 
+                            className="px-4 py-2 bg-gradient-to-r from-orange-100 to-red-100 text-orange-800 rounded-full text-sm font-medium transform hover:scale-105 transition-all duration-200 cursor-pointer hover:shadow-md"
+                          >
+                            {role}
+                          </span>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Enhanced Industries */}
+            {recruiter.industries && recruiter.industries.length > 0 && (
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                  <div className="bg-white rounded-xl">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <div className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
+                        Industries
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-3">
+                        {recruiter.industries.map((industry, index) => (
+                          <span 
+                            key={index} 
+                            className="px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 rounded-full text-sm font-medium transform hover:scale-105 transition-all duration-200 cursor-pointer hover:shadow-md"
+                          >
+                            {industry}
+                          </span>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Single Enhanced Testimonials Section */}
+            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                <div className="bg-white rounded-xl">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <div className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
+                        Client Testimonials
+                      </CardTitle>
+                      <Button
+                        onClick={() => setShowTestimonialForm(true)}
+                        className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white shadow-lg transform hover:scale-105 transition-all duration-200"
+                        size="sm"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Write a Review
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {recruiter.testimonials && recruiter.testimonials.length > 0 ? (
+                      <div className="space-y-6">
+                        {recruiter.testimonials.map((testimonial, index) => (
+                          <div key={index} className="relative p-6 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border-l-4 border-orange-400 transform hover:scale-[1.02] transition-all duration-200">
+                            <div className="absolute top-4 right-4 text-orange-200 text-6xl font-serif">"</div>
+                            <blockquote className="text-gray-700 italic text-lg leading-relaxed mb-4 relative z-10">
+                              {testimonial.quote}
+                            </blockquote>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-gradient-to-r from-orange-400 to-red-400 rounded-full flex items-center justify-center text-white font-semibold">
+                                {testimonial.reviewer.charAt(0)}
+                              </div>
+                              <div>
+                                <cite className="text-sm font-semibold text-gray-900 not-italic">
+                                  {testimonial.reviewer}
+                                </cite>
+                                {testimonial.rating && (
+                                  <div className="flex items-center mt-1">
+                                    {[...Array(testimonial.rating)].map((_, i) => (
+                                      <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="w-20 h-20 bg-gradient-to-r from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <MessageSquare className="w-10 h-10 text-orange-500" />
+                        </div>
+                        <p className="text-gray-600 mb-2 text-lg">No testimonials yet</p>
+                        <p className="text-sm text-gray-500">Be the first to share your experience working with {recruiter.name}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </div>
+              </div>
+            </Card>
+          </div>  
+        {/* Enhanced Sidebar */}
+          <div className="space-y-6">
+            {/* Specialization */}
+            <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden group">
+              <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                <div className="bg-white rounded-xl">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Specialization</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <span className="inline-block px-4 py-3 bg-gradient-to-r from-orange-100 to-red-100 text-orange-800 rounded-xl font-medium text-center w-full transform group-hover:scale-105 transition-transform duration-200">
+                      {recruiter.specialization}
+                    </span>
+                  </CardContent>
+                </div>
+              </div>
+            </Card>
+
+            {/* Keywords */}
+            {recruiter.keywords && recruiter.keywords.length > 0 && (
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                  <div className="bg-white rounded-xl">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Keywords & Skills</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        {recruiter.keywords.map((keyword, index) => (
+                          <span 
+                            key={index} 
+                            className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transform hover:scale-105 transition-all duration-200 cursor-pointer"
+                          >
+                            #{keyword}
+                          </span>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Languages */}
+            {recruiter.languages && recruiter.languages.length > 0 && (
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                  <div className="bg-white rounded-xl">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Languages</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        {recruiter.languages.map((language, index) => (
+                          <span 
+                            key={index} 
+                            className="px-3 py-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 rounded-full text-sm font-medium transform hover:scale-105 transition-all duration-200 cursor-pointer"
+                          >
+                            {language}
+                          </span>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Recruiting Focus - Only show if any focus data exists */}
+            {(recruiter.seniorityLevels && recruiter.seniorityLevels.length > 0) || 
+             (recruiter.employmentTypes && recruiter.employmentTypes.length > 0) || 
+             (recruiter.regions && recruiter.regions.length > 0) ? (
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                  <div className="bg-white rounded-xl">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Recruiting Focus</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {recruiter.seniorityLevels && recruiter.seniorityLevels.length > 0 && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2 text-sm">Seniority Levels</h4>
+                          <div className="flex flex-wrap gap-1">
+                            {recruiter.seniorityLevels.map((level, index) => (
+                              <span 
+                                key={index} 
+                                className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium transform hover:scale-105 transition-all duration-200 cursor-pointer"
+                              >
+                                {level}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {recruiter.employmentTypes && recruiter.employmentTypes.length > 0 && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2 text-sm">Employment Types</h4>
+                          <div className="flex flex-wrap gap-1">
+                            {recruiter.employmentTypes.map((type, index) => (
+                              <span 
+                                key={index} 
+                                className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs font-medium transform hover:scale-105 transition-all duration-200 cursor-pointer"
+                              >
+                                {type}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {recruiter.regions && recruiter.regions.length > 0 && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2 text-sm">Regions</h4>
+                          <div className="flex flex-wrap gap-1">
+                            {recruiter.regions.map((region, index) => (
+                              <span 
+                                key={index} 
+                                className="px-2 py-1 bg-teal-100 text-teal-800 rounded text-xs font-medium transform hover:scale-105 transition-all duration-200 cursor-pointer"
+                              >
+                                {region}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </div>
+                </div>
+              </Card>
+            ) : null}    
+        {/* Certifications */}
+            {recruiter.certifications && recruiter.certifications.length > 0 && (
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                  <div className="bg-white rounded-xl">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Certifications</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {recruiter.certifications.map((cert, index) => (
+                          <div key={index} className="flex items-center gap-3 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg transform hover:scale-105 transition-all duration-200 cursor-pointer">
+                            <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center">
+                              <Award className="w-4 h-4 text-white" />
+                            </div>
+                            <span className="text-sm font-medium text-gray-900">{cert}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Availability */}
+            {recruiter.availability && (
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                  <div className="bg-white rounded-xl">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Availability</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
+                          {recruiter.availability.accepting ? (
+                            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                              <CheckCircle className="w-4 h-4 text-white" />
+                            </div>
+                          ) : (
+                            <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center">
+                              <Clock className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-sm font-medium text-gray-900 block">
+                              {recruiter.availability.accepting ? 'Accepting new clients' : 'Not accepting new clients'}
+                            </span>
+                            {recruiter.availability.nextAvailable && (
+                              <span className="text-xs text-gray-600">
+                                Next available: {recruiter.availability.nextAvailable}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Social Proof - Only show if any social proof data exists */}
+            {recruiter.socialProof && 
+             ((recruiter.socialProof.linkedinFollowers && recruiter.socialProof.linkedinFollowers > 0) || 
+              (recruiter.socialProof.featuredIn && recruiter.socialProof.featuredIn.length > 0)) && (
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                  <div className="bg-white rounded-xl">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">Social Proof</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {recruiter.socialProof.linkedinFollowers && recruiter.socialProof.linkedinFollowers > 0 && (
+                        <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg">
+                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
+                            <Linkedin className="w-4 h-4 text-white" />
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {recruiter.socialProof.linkedinFollowers.toLocaleString()} LinkedIn followers
+                          </span>
+                        </div>
+                      )}
+                      {recruiter.socialProof.featuredIn && recruiter.socialProof.featuredIn.length > 0 && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-3 text-sm">Featured In</h4>
+                          <div className="space-y-2">
+                            {recruiter.socialProof.featuredIn.map((publication, index) => (
+                              <div key={index} className="p-2 bg-gradient-to-r from-gray-50 to-orange-50 rounded-lg text-sm text-gray-700 font-medium">
+                                {publication}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </div>
+                </div>
+              </Card>
+            )}       
+     {/* Similar Profiles Section */}
+            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-500/5 to-red-500/5 p-1">
+                <div className="bg-white rounded-xl">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Users className="w-5 h-5 text-orange-600" />
+                      Similar Profiles
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {similarRecruiters.map((similar, index) => (
+                        <Link key={similar.id} href={`/tool/${similar.slug}`}>
+                          <div className="group p-4 bg-gradient-to-r from-gray-50 to-orange-50/30 rounded-xl border border-gray-100 hover:border-orange-200 transform hover:scale-[1.02] transition-all duration-200 cursor-pointer">
+                            <div className="flex items-center gap-3">
+                              <div className="relative">
+                                <img 
+                                  src={similar.avatar}
+                                  alt={similar.name}
+                                  className="w-12 h-12 rounded-full object-cover ring-2 ring-white shadow-md group-hover:ring-orange-200 transition-all duration-200"
+                                />
+                                {similar.badge && (
+                                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+                                    {getBadgeIcon(similar.badge) && (
+                                      <div className="text-white text-xs">
+                                        {getBadgeIcon(similar.badge)}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors duration-200 truncate">
+                                  {similar.name}
+                                </h4>
+                                <p className="text-sm text-gray-600 truncate">{similar.company}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                                    {similar.specialization}
+                                  </span>
+                                  {similar.rating && (
+                                    <div className="flex items-center gap-1">
+                                      <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                                      <span className="text-xs text-gray-600">{similar.rating}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                      
+                      {similarRecruiters.length === 0 && (
+                        <div className="text-center py-8">
+                          <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                          <p className="text-gray-600 text-sm">No similar profiles found</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
-
-        <UserAuthForm
-          isOpen={showAuthForm}
-          onClose={() => setShowAuthForm(false)}
-          onSubmit={handleAuthSubmit}
-          title="Vote for this tool"
-          description={`Please provide your information to vote for ${tool?.name}. This helps us maintain quality and prevent spam.`}
-        />
-      </motion.div>
-
-      {/* Email Subscription Section - Footer */}
-      <div className="bg-gray-50 border-t border-gray-200 shadow-inner">
-        <EmailSubscription className="shadow-sm" />
       </div>
+
+      {/* Testimonial Form Modal */}
+      <TestimonialForm
+        isOpen={showTestimonialForm}
+        onClose={() => setShowTestimonialForm(false)}
+        recruiterId={recruiter.id}
+        recruiterName={recruiter.name}
+      />
     </div>
   )
 }

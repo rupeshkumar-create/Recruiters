@@ -52,7 +52,8 @@ export default function FeaturedAdminPage() {
 
   const filteredTools = tools.filter(tool => 
     tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tool.tagline.toLowerCase().includes(searchTerm.toLowerCase())
+    (tool.company && tool.company.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (tool.specialization && tool.specialization.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
   const handleToggleFeatured = async (toolId: string) => {
@@ -148,18 +149,17 @@ export default function FeaturedAdminPage() {
               }`}
             >
               <div className="flex items-start gap-4 mb-4">
-                <ToolImage 
-                  src={tool.logo}
-                  alt={`${tool.name} logo`}
-                  name={tool.name}
-                  size="md"
+                <img 
+                  src={tool.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(tool.name)}&background=3B82F6&color=fff&size=48`}
+                  alt={`${tool.name} avatar`}
+                  className="w-12 h-12 rounded-full shadow-sm object-cover"
                 />
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">
                     {tool.name}
                   </h3>
-                  <span className="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">
-                    {tool.categories.split(',')[0].trim()}
+                  <span className="inline-block bg-orange-100 text-orange-600 text-xs px-2 py-1 rounded-full">
+                    {tool.specialization || 'General'}
                   </span>
                 </div>
               </div>

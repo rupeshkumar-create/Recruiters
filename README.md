@@ -1,130 +1,226 @@
-# AI Staffing Tools Directory
+# 🎯 Professional Recruiter Directory
 
-A premium, curated directory application for AI-powered staffing and recruitment tools built with Next.js, Tailwind CSS, and shadcn/ui components.
+A modern, full-featured recruiter directory built with Next.js, featuring professional headshot management, advanced search capabilities, and comprehensive admin panel.
 
-## Features
+![Recruiter Directory](https://img.shields.io/badge/Next.js-14.2.33-black?style=for-the-badge&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.3-38B2AC?style=for-the-badge&logo=tailwind-css)
+![Supabase](https://img.shields.io/badge/Supabase-Ready-green?style=for-the-badge&logo=supabase)
 
-### Public Directory
-- **Search Functionality**: Live-filtering search across tool names, descriptions, and tags
-- **Category Filters**: Filter tools by Resume Screening, Candidate Sourcing, Interview Prep, and ATS Integrations
-- **Tool Cards**: Clean card-based layout displaying tool information with hover animations
-- **Responsive Design**: Fully mobile-responsive with 3-column desktop and 1-column mobile layout
-- **Tool Submission**: Public users can submit new tools for review
+## ✨ Features
 
-### Admin Dashboard
-- **Password Protection**: Secure admin access (demo password: `admin123`)
-- **Submission Review**: View and manage pending tool submissions
-- **Approval System**: Approve or reject submitted tools
-- **Detailed View**: Review complete submission details before making decisions
+### 🏠 **Homepage**
+- **20 Professional Recruiters** with high-quality headshots
+- **Advanced Search** with real-time suggestions and autocomplete
+- **Multi-Filter System** (specialization, location, experience, rating, badges)
+- **Responsive Design** optimized for all devices
+- **Professional UI** with modern animations and interactions
 
-## Design System
+### 👨‍💼 **Recruiter Profiles**
+- **Comprehensive Profiles** with detailed information
+- **Professional Headshots** for all recruiters
+- **Performance Metrics** (ratings, placements, satisfaction scores)
+- **Specialization Tags** and industry expertise
+- **Contact Information** and social links
 
-- **Color Scheme**: Monochrome base with white/gray space and minimalist Scandinavian design
-- **Accent Color**: `#F26B21` for all interactive elements (buttons, links, hover states)
-- **Typography**: Clean, modern typography with ample whitespace
-- **Animations**: Subtle hover effects and smooth transitions using Framer Motion
+### 🛠️ **Admin Panel**
+- **Dashboard** with key metrics and analytics
+- **Recruiter Management** - full CRUD operations
+- **Headshot Manager** - upload, gallery selection, and management
+- **Testimonial System** - review and approve client testimonials
+- **Submission Management** - handle new recruiter applications
+- **Advanced Settings** - system configuration and preferences
 
-## Tech Stack
+### 🎨 **Design & UX**
+- **Modern UI** with Tailwind CSS and Framer Motion
+- **Professional Color Scheme** optimized for recruitment industry
+- **Responsive Grid Layouts** that work on all screen sizes
+- **Smooth Animations** and micro-interactions
+- **Accessibility Compliant** design patterns
 
-- **Framework**: Next.js 14 with App Router
-- **Styling**: Tailwind CSS with custom design tokens
-- **Components**: shadcn/ui component library
-- **Icons**: Lucide React
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Git
+
+### Installation
+
+1. **Clone the repository**
+```bash
+git clone https://github.com/rupeshkumar-create/Recruiters.git
+cd Recruiters
+```
+
+2. **Install dependencies**
+```bash
+npm install
+```
+
+3. **Set up environment variables**
+```bash
+# Copy the environment template
+cp .env.example .env.local
+
+# Edit .env.local with your configuration
+```
+
+4. **Start development server**
+```bash
+npm run dev
+```
+
+5. **Open your browser**
+- Homepage: http://localhost:3000
+- Admin Panel: http://localhost:3000/admin (password: `admin123`)
+
+## 📁 Project Structure
+
+```
+Recruiters/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── page.tsx           # Homepage
+│   │   ├── admin/             # Admin panel pages
+│   │   ├── tool/[slug]/       # Individual recruiter profiles
+│   │   └── api/               # API endpoints
+│   ├── components/            # Reusable React components
+│   │   ├── ui/                # UI component library
+│   │   ├── AdminLayout.tsx    # Admin panel layout
+│   │   ├── Navigation.tsx     # Main navigation
+│   │   └── HeadshotManager.tsx # Headshot management
+│   ├── lib/                   # Utilities and configurations
+│   │   ├── data.ts           # Recruiter data and types
+│   │   ├── supabase.ts       # Supabase configuration
+│   │   └── recruiterStorage.ts # Data management
+│   └── public/
+│       └── images/recruiters/ # Professional headshot images
+├── .env.local                 # Environment variables
+├── package.json              # Dependencies and scripts
+└── README.md                 # This file
+```
+
+## 🎯 Key Features
+
+### **Homepage Features**
+- ✅ Professional recruiter cards with headshots
+- ✅ Real-time search with suggestions
+- ✅ Advanced filtering (specialization, location, experience, rating)
+- ✅ Responsive grid layout
+- ✅ Professional footer with email subscription
+
+### **Admin Panel Features**
+- ✅ Comprehensive dashboard with metrics
+- ✅ Full recruiter profile management
+- ✅ Professional headshot management system
+- ✅ Testimonial review and approval workflow
+- ✅ New submission handling
+- ✅ System settings and configuration
+
+### **Data Management**
+- ✅ 20 professional recruiters with complete profiles
+- ✅ High-quality headshot images
+- ✅ Comprehensive recruiter data (experience, ratings, specializations)
+- ✅ Real-time updates between admin and frontend
+- ✅ Supabase integration ready
+
+## 🔧 Available Scripts
+
+```bash
+# Development
+npm run dev          # Start development server
+npm run build        # Build for production
+npm start           # Start production server
+npm run lint        # Run ESLint
+
+# Setup
+./setup.sh          # Automated setup script (Unix/Mac)
+```
+
+## 🌐 Available Routes
+
+### **Public Routes**
+- `/` - Homepage with recruiter directory
+- `/tool/[slug]` - Individual recruiter profiles
+
+### **Admin Routes** (Password: `admin123`)
+- `/admin` - Dashboard
+- `/admin/edit` - Manage recruiters
+- `/admin/testimonials` - Review testimonials
+- `/admin/submissions` - Handle new submissions
+- `/admin/settings` - System configuration
+
+### **API Routes**
+- `/api/recruiters` - Recruiter CRUD operations
+- `/api/testimonials` - Testimonial management
+- `/api/submissions` - Submission handling
+
+## 🗄️ Database Integration
+
+### **Supabase Setup (Optional)**
+For real-time data synchronization and persistent storage:
+
+1. **Create Supabase Project**
+2. **Run Database Schema**
+   ```sql
+   -- Use the SQL from fix_supabase_tables.sql
+   ```
+3. **Configure Environment Variables**
+4. **Enable Real-time Features**
+
+### **Local Storage (Default)**
+The application works out-of-the-box with localStorage for data persistence.
+
+## 🎨 Tech Stack
+
+- **Framework**: Next.js 14.2.33 with App Router
+- **Language**: TypeScript 5.0
+- **Styling**: Tailwind CSS 3.3
+- **UI Components**: Radix UI primitives
 - **Animations**: Framer Motion
-- **TypeScript**: Full type safety
+- **Icons**: Lucide React
+- **Database**: Supabase (optional) / localStorage (default)
+- **Deployment**: Vercel ready
 
-## Getting Started
+## 📊 Features Overview
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+| Feature | Status | Description |
+|---------|--------|-------------|
+| 🏠 Homepage | ✅ Complete | Professional recruiter directory |
+| 🔍 Search | ✅ Complete | Real-time search with suggestions |
+| 🎛️ Filters | ✅ Complete | Advanced multi-filter system |
+| 👤 Profiles | ✅ Complete | Detailed recruiter profiles |
+| 🖼️ Headshots | ✅ Complete | Professional image management |
+| 🛠️ Admin Panel | ✅ Complete | Comprehensive management system |
+| 💬 Testimonials | ✅ Complete | Review and approval system |
+| 📱 Responsive | ✅ Complete | Mobile-optimized design |
+| 🗄️ Database | ✅ Ready | Supabase integration available |
+| 🚀 Performance | ✅ Optimized | Fast loading and smooth interactions |
 
-2. Set up environment variables:
-   - Copy `.env.example` to a new file named `.env`
-   - Fill in your own values for all required environment variables
-   - **IMPORTANT**: Never commit your `.env` file to version control
+## 🤝 Contributing
 
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+## 📝 License
 
-## Environment Variables and Security
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### Security Best Practices
+## 🙏 Acknowledgments
 
-- **Never commit secrets or API keys to your repository**
-- Always use `.env.example` as a template with placeholder values
-- The `.gitignore` file is configured to exclude all `.env` files
-- For production deployments, use environment secrets in your CI/CD platform
+- Professional headshot images from various sources
+- UI components built with Radix UI
+- Icons provided by Lucide React
+- Animations powered by Framer Motion
 
-### Required Environment Variables
+## 📞 Support
 
-- **Supabase Configuration**
-  - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
-  - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
+For support, email [your-email@example.com] or create an issue in this repository.
 
-- **Email Service**
-  - `LOOPS_API_KEY`: API key for email notifications
+---
 
-
-
-## Usage
-
-### Public Users
-1. Browse the directory of AI staffing tools
-2. Use the search bar to find specific tools
-3. Filter by category using the tab navigation
-4. Click "Submit Tool" to add new tools for review
-5. Click "Visit Tool" to go to the tool's website
-
-### Admin Access
-1. Navigate to `/admin`
-2. Enter the admin password: `admin123`
-3. Review pending submissions in the dashboard
-4. Click the eye icon to view submission details
-5. Use the check/X buttons to approve or reject submissions
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── admin/
-│   │   └── page.tsx          # Admin dashboard
-│   ├── globals.css           # Global styles and Tailwind
-│   ├── layout.tsx            # Root layout
-│   └── page.tsx              # Main directory page
-├── components/
-│   ├── ui/                   # shadcn/ui components
-│   └── SubmissionForm.tsx    # Tool submission form
-└── lib/
-    └── utils.ts              # Utility functions
-```
-
-## Customization
-
-The application is built with modularity in mind:
-
-- **Colors**: Update the accent color in `tailwind.config.js`
-- **Categories**: Modify the categories array in both `page.tsx` and `SubmissionForm.tsx`
-- **Mock Data**: Replace `mockTools` and `mockSubmissions` with real API calls
-- **Authentication**: Implement proper authentication for the admin panel
-
-## Production Considerations
-
-- Replace mock data with a real database (PostgreSQL, MongoDB, etc.)
-- Implement proper authentication and authorization
-- Add form validation and error handling
-- Set up file upload for tool logos
-- Add email notifications for submissions
-- Implement proper SEO optimization
-- Add analytics and monitoring
-
-## License
-
-MIT License - feel free to use this project as a starting point for your own directory application.
+**Built with ❤️ for the recruitment industry**
