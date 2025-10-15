@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { emailService } from '@/lib/email';
 
 // In-memory storage for submissions (in production, use a database)
 let submissions: any[] = [];
@@ -149,6 +150,18 @@ export async function POST(request: NextRequest) {
       email: submission.email
     });
 
+    // Send confirmation email to the submitter
+    try {
+      await emailService.sendSubmissionConfirmation({
+        name: submission.name,
+        email: submission.email,
+      });
+      console.log('Confirmation email sent to:', submission.email);
+    } catch (error) {
+      console.error('Failed to send confirmation email:', error);
+      // Don't fail the submission if email fails
+    }
+
     return NextResponse.json({
       message: 'Recruiter profile submitted successfully',
       id: submission.id
@@ -176,8 +189,9 @@ export async function PUT(request: NextRequest) {
     }
 
     if (action === 'approve') {
+      const submission = submissions[submissionIndex];
       submissions[submissionIndex] = {
-        ...submissions[submissionIndex],
+        ...submission,
         status: 'approved',
         approved: true,
         hidden: false, // Make visible when approved
@@ -185,6 +199,21 @@ export async function PUT(request: NextRequest) {
       };
 
       console.log('Submission approved:', id);
+
+      // Send approval email to the recruiter
+      try {
+        const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/recruiter/${submission.slug}`;
+        await emailService.sendApprovalNotification({
+          name: submission.name,
+          email: submission.email,
+          profileUrl: profileUrl,
+        });
+        console.log('Approval email sent to:', submission.email);
+      } catch (error) {
+        console.error('Failed to send approval email:', error);
+        // Don't fail the approval if email fails
+      }
+
       return NextResponse.json({ message: 'Submission approved successfully' });
     } else if (action === 'reject') {
       submissions[submissionIndex] = {
