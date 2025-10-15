@@ -12,7 +12,8 @@ import AdminLayout from '../../../components/AdminLayout'
 interface Submission {
   id: string
   name: string
-  jobTitle: string
+  job_title?: string
+  jobTitle?: string
   company: string
   email: string
   phone: string
@@ -22,39 +23,57 @@ interface Submission {
   experience: string
   bio: string
   avatar: string
-  slug: string
-  specializations: string[]
-  placements: number
-  avgTimeToHire: number
-  candidateSatisfaction: number
-  clientRetention: number
-  achievements: string[]
-  workExperience: Array<{
+  slug?: string
+  specialization?: string
+  specializations?: string[] | string
+  placements?: number
+  avg_time_to_hire?: number
+  avgTimeToHire?: number
+  candidate_satisfaction?: number
+  candidateSatisfaction?: number
+  client_retention?: number
+  clientRetention?: number
+  achievements?: string[] | string
+  work_experience?: Array<{
+    jobTitle: string
+    company: string
+    duration: string
+    description?: string
+  }> | string
+  workExperience?: Array<{
     jobTitle: string
     company: string
     duration: string
     description?: string
   }>
-  rolesPlaced: string[]
-  industries: string[]
-  keywords: string[]
-  languages: string[]
-  seniorityLevels: string[]
-  employmentTypes: string[]
-  regions: string[]
-  certifications: string[]
-  availability: {
+  roles_placed?: string[] | string
+  rolesPlaced?: string[]
+  industries?: string[] | string
+  keywords?: string[] | string
+  languages?: string[] | string
+  seniority_levels?: string[] | string
+  seniorityLevels?: string[]
+  employment_types?: string[] | string
+  employmentTypes?: string[]
+  regions?: string[] | string
+  certifications?: string[] | string
+  availability?: {
     accepting: boolean
     nextAvailable: string
-  }
-  socialProof: {
+  } | string
+  social_proof?: {
+    linkedinFollowers: number
+    featuredIn: string[]
+  } | string
+  socialProof?: {
     linkedinFollowers: number
     featuredIn: string[]
   }
   status: 'pending' | 'approved' | 'rejected'
-  approved: boolean
-  hidden: boolean
-  submitterEmail: string
+  approved?: boolean
+  hidden?: boolean
+  submitter_email?: string
+  submitterEmail?: string
   created_at: string
   updated_at: string
 }
@@ -233,11 +252,24 @@ export default function AdminSubmissionsPage() {
                             </span>
                           </div>
                           <div className="flex flex-wrap gap-2 mt-2">
-                            {submission.specializations.slice(0, 3).map((spec, index) => (
-                              <span key={index} className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs">
-                                {spec}
-                              </span>
-                            ))}
+                            {(() => {
+                              try {
+                                const specs = typeof submission.specializations === 'string' 
+                                  ? JSON.parse(submission.specializations)
+                                  : submission.specializations || [submission.specialization];
+                                return specs.slice(0, 3).map((spec: string, index: number) => (
+                                  <span key={index} className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs">
+                                    {spec}
+                                  </span>
+                                ));
+                              } catch (error) {
+                                return submission.specialization ? (
+                                  <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs">
+                                    {submission.specialization}
+                                  </span>
+                                ) : null;
+                              }
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -386,19 +418,19 @@ export default function AdminSubmissionsPage() {
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center p-4 bg-orange-50 rounded-lg">
-                      <div className="text-2xl font-bold text-orange-600">{selectedSubmission.placements}+</div>
+                      <div className="text-2xl font-bold text-orange-600">{selectedSubmission.placements || 0}+</div>
                       <div className="text-sm text-gray-600">Placements</div>
                     </div>
                     <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">{selectedSubmission.avgTimeToHire}</div>
+                      <div className="text-2xl font-bold text-green-600">{selectedSubmission.avg_time_to_hire || selectedSubmission.avgTimeToHire || 30}</div>
                       <div className="text-sm text-gray-600">Avg. Days to Hire</div>
                     </div>
                     <div className="text-center p-4 bg-purple-50 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">{selectedSubmission.candidateSatisfaction}%</div>
+                      <div className="text-2xl font-bold text-purple-600">{selectedSubmission.candidate_satisfaction || selectedSubmission.candidateSatisfaction || 90}%</div>
                       <div className="text-sm text-gray-600">Candidate Satisfaction</div>
                     </div>
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{selectedSubmission.clientRetention}%</div>
+                      <div className="text-2xl font-bold text-blue-600">{selectedSubmission.client_retention || selectedSubmission.clientRetention || 85}%</div>
                       <div className="text-sm text-gray-600">Client Retention</div>
                     </div>
                   </CardContent>
@@ -412,11 +444,24 @@ export default function AdminSubmissionsPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="flex flex-wrap gap-2">
-                        {selectedSubmission.specializations.map((spec, index) => (
-                          <span key={index} className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
-                            {spec}
-                          </span>
-                        ))}
+                        {(() => {
+                          try {
+                            const specs = typeof selectedSubmission.specializations === 'string' 
+                              ? JSON.parse(selectedSubmission.specializations)
+                              : selectedSubmission.specializations || [selectedSubmission.specialization];
+                            return specs.map((spec: string, index: number) => (
+                              <span key={index} className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
+                                {spec}
+                              </span>
+                            ));
+                          } catch (error) {
+                            return selectedSubmission.specialization ? (
+                              <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
+                                {selectedSubmission.specialization}
+                              </span>
+                            ) : null;
+                          }
+                        })()}
                       </div>
                     </CardContent>
                   </Card>
@@ -427,11 +472,20 @@ export default function AdminSubmissionsPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="flex flex-wrap gap-2">
-                        {selectedSubmission.languages.map((lang, index) => (
-                          <span key={index} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                            {lang}
-                          </span>
-                        ))}
+                        {(() => {
+                          try {
+                            const langs = typeof selectedSubmission.languages === 'string' 
+                              ? JSON.parse(selectedSubmission.languages)
+                              : selectedSubmission.languages || [];
+                            return langs.map((lang: string, index: number) => (
+                              <span key={index} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                                {lang}
+                              </span>
+                            ));
+                          } catch (error) {
+                            return <span className="text-gray-500 text-sm">No languages specified</span>;
+                          }
+                        })()}
                       </div>
                     </CardContent>
                   </Card>

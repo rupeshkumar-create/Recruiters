@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       .replace(/[^a-z0-9-]/g, '')
       .substring(0, 50);
 
-    // Create submission object
+    // Create submission object with all required fields
     const submissionData = {
       name: body.name,
       job_title: body.jobTitle,
@@ -113,7 +113,25 @@ export async function POST(request: NextRequest) {
       bio: body.bio,
       avatar: body.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(body.name)}&background=3B82F6&color=fff&size=128`,
       submitter_email: body.email,
-      status: 'pending'
+      status: 'pending',
+      // Store additional data as JSON for admin panel
+      specializations: JSON.stringify(body.specializations),
+      achievements: JSON.stringify(body.achievements),
+      work_experience: JSON.stringify(body.workExperience),
+      roles_placed: JSON.stringify(body.rolesPlaced),
+      industries: JSON.stringify(body.industries),
+      keywords: JSON.stringify(body.keywords),
+      languages: JSON.stringify(body.languages),
+      seniority_levels: JSON.stringify(body.seniorityLevels),
+      employment_types: JSON.stringify(body.employmentTypes),
+      regions: JSON.stringify(body.regions),
+      certifications: JSON.stringify(body.certifications || []),
+      placements: body.placements,
+      avg_time_to_hire: body.avgTimeToHire,
+      candidate_satisfaction: body.candidateSatisfaction,
+      client_retention: body.clientRetention,
+      availability: JSON.stringify(body.availability || { accepting: true, nextAvailable: '' }),
+      social_proof: JSON.stringify(body.socialProof || { linkedinFollowers: 0, featuredIn: [] })
     };
 
     let submission;
@@ -234,22 +252,108 @@ export async function PUT(request: NextRequest) {
 
       console.log('Submission approved:', id);
 
-      // Send approval email to the recruiter
+      // Add approved recruiter to the main recruiters list
       try {
+        const { RecruiterStorage } = await import('@/lib/recruiterStorage');
+        
+        // Generate slug
         const slug = submission.name.toLowerCase()
           .replace(/\s+/g, '-')
           .replace(/[^a-z0-9-]/g, '')
           .substring(0, 50);
-        const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/recruiter/${slug}`;
+
+        // Create recruiter object from submission
+        const newRecruiter = {
+          id: submission.id,
+          name: submission.name,
+          jobTitle: submission.job_title,
+          company: submission.company,
+          email: submission.email,
+          phone: submission.phone,
+          linkedin: submission.linkedin,
+          website: submission.website || '',
+          specialization: submission.specialization,
+          experience: submission.experience,
+          location: submission.location,
+          remoteAvailable: submission.remote_available || false,
+          bio: submission.bio,
+          avatar: submission.avatar,
+          slug: slug,
+          featured: false,
+          hidden: false, // Make visible on homepage
+          approved: true,
+          status: 'approved' as const,
+          submitterEmail: submission.submitter_email,
+          
+          // Performance metrics
+          rating: 0,
+          reviewCount: 0,
+          placements: submission.placements || 0,
+          avgTimeToHire: submission.avg_time_to_hire || 30,
+          candidateSatisfaction: submission.candidate_satisfaction || 90,
+          clientRetention: submission.client_retention || 85,
+          
+          // Professional details (parse JSON if stored as string)
+          achievements: typeof submission.achievements === 'string' 
+            ? JSON.parse(submission.achievements) 
+            : submission.achievements || [],
+          workExperience: typeof submission.work_experience === 'string'
+            ? JSON.parse(submission.work_experience)
+            : submission.work_experience || [],
+          rolesPlaced: typeof submission.roles_placed === 'string'
+            ? JSON.parse(submission.roles_placed)
+            : submission.roles_placed || [],
+          industries: typeof submission.industries === 'string'
+            ? JSON.parse(submission.industries)
+            : submission.industries || [],
+          keywords: typeof submission.keywords === 'string'
+            ? JSON.parse(submission.keywords)
+            : submission.keywords || [],
+          languages: typeof submission.languages === 'string'
+            ? JSON.parse(submission.languages)
+            : submission.languages || [],
+          seniorityLevels: typeof submission.seniority_levels === 'string'
+            ? JSON.parse(submission.seniority_levels)
+            : submission.seniority_levels || [],
+          employmentTypes: typeof submission.employment_types === 'string'
+            ? JSON.parse(submission.employment_types)
+            : submission.employment_types || [],
+          regions: typeof submission.regions === 'string'
+            ? JSON.parse(submission.regions)
+            : submission.regions || [],
+          certifications: typeof submission.certifications === 'string'
+            ? JSON.parse(submission.certifications)
+            : submission.certifications || [],
+          
+          // Optional fields
+          availability: typeof submission.availability === 'string'
+            ? JSON.parse(submission.availability)
+            : submission.availability || { accepting: true, nextAvailable: '' },
+          socialProof: typeof submission.social_proof === 'string'
+            ? JSON.parse(submission.social_proof)
+            : submission.social_proof || { linkedinFollowers: 0, featuredIn: [] },
+          testimonials: [],
+          
+          created_at: submission.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        // Add to recruiters storage
+        await RecruiterStorage.addRecruiter(newRecruiter);
+        console.log('Recruiter added to main directory:', newRecruiter.name);
+
+        // Send approval email to the recruiter
+        const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/tool/${slug}`;
         await emailService.sendApprovalNotification({
           name: submission.name,
           email: submission.email,
           profileUrl: profileUrl,
         });
         console.log('Approval email sent to:', submission.email);
+
       } catch (error) {
-        console.error('Failed to send approval email:', error);
-        // Don't fail the approval if email fails
+        console.error('Failed to add recruiter to directory or send email:', error);
+        // Don't fail the approval if this fails
       }
 
       return NextResponse.json({ message: 'Submission approved successfully' });

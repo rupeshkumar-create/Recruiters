@@ -96,33 +96,32 @@ export default function AdminPage() {
         activeRecruiters: 18
       })
 
-      // Mock recent activity
-      setRecentActivity([
-        {
-          id: 1,
+      // Load recent activity from submissions
+      const recentSubmissions = submissionsResponse.ok ? await submissionsResponse.json() : []
+      const recentActivity = recentSubmissions
+        .slice(0, 5) // Get last 5 submissions
+        .map((submission: any, index: number) => ({
+          id: submission.id || index,
           type: 'submission',
-          message: 'New recruiter profile submitted',
-          user: 'Sarah Johnson',
-          time: '2 hours ago',
-          status: 'pending'
-        },
-        {
-          id: 2,
+          message: `New recruiter profile submitted`,
+          user: submission.name || 'Unknown',
+          time: submission.created_at ? new Date(submission.created_at).toLocaleDateString() : 'Recently',
+          status: submission.status || 'pending'
+        }))
+
+      // Add some mock testimonial activity if we have space
+      if (recentActivity.length < 3) {
+        recentActivity.push({
+          id: 'testimonial-1',
           type: 'testimonial',
           message: 'New testimonial received',
-          user: 'Michael Chen',
-          time: '4 hours ago',
+          user: 'Client Review',
+          time: 'Yesterday',
           status: 'approved'
-        },
-        {
-          id: 3,
-          type: 'profile',
-          message: 'Profile updated',
-          user: 'Emily Rodriguez',
-          time: '1 day ago',
-          status: 'completed'
-        }
-      ])
+        })
+      }
+
+      setRecentActivity(recentActivity)
     } catch (error) {
       console.error('Error loading dashboard data:', error)
     } finally {

@@ -202,6 +202,38 @@ export class RecruiterStorage {
     return recruiters.find(r => r.slug === slug) || null
   }
 
+  // Add a new recruiter to the storage
+  static async addRecruiter(recruiter: Recruiter): Promise<void> {
+    try {
+      // Get current recruiters
+      const currentRecruiters = await this.getAll()
+      
+      // Check if recruiter already exists
+      const existingIndex = currentRecruiters.findIndex(r => r.id === recruiter.id)
+      
+      if (existingIndex >= 0) {
+        // Update existing recruiter
+        currentRecruiters[existingIndex] = recruiter
+      } else {
+        // Add new recruiter
+        currentRecruiters.push(recruiter)
+      }
+      
+      // Save updated list
+      await this.saveAll(currentRecruiters)
+      
+      // Trigger homepage refresh
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('recruitersUpdated', {
+          detail: { recruiters: currentRecruiters }
+        }))
+      }
+    } catch (error) {
+      console.error('Error adding recruiter:', error)
+      throw error
+    }
+  }
+
   // Reset to default data
   static reset(): void {
     if (typeof window === 'undefined') return
