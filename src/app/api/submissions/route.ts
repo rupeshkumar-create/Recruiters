@@ -190,11 +190,6 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Submission ID is required' }, { status: 400 });
     }
 
-    const submissionIndex = submissions.findIndex(s => s.id === id);
-    if (submissionIndex === -1) {
-      return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
-    }
-
     if (action === 'approve') {
       let submission;
 

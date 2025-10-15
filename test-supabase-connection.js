@@ -33,9 +33,9 @@ async function testSupabaseConnection() {
     // Test database connection by checking tables
     console.log('\n🔍 Testing database connection...');
     
-    const { data: tables, error: tablesError } = await supabase
+    const { count, error: tablesError } = await supabase
       .from('recruiters')
-      .select('count', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true });
 
     if (tablesError) {
       console.log('❌ Database connection failed:', tablesError.message);
@@ -45,13 +45,14 @@ async function testSupabaseConnection() {
         console.log('Please run the SQL schema in your Supabase SQL Editor:');
         console.log('1. Go to your Supabase dashboard');
         console.log('2. Navigate to SQL Editor');
-        console.log('3. Run the schema from supabase_schema_fixed.sql');
+        console.log('3. Run the schema from supabase_schema_varchar_fixed.sql');
+        console.log('4. Or run the trigger fix from SUPABASE_TRIGGER_FIX.md');
       }
       return;
     }
 
     console.log('✅ Database connection successful');
-    console.log(`📊 Recruiters table exists with ${tables || 0} records`);
+    console.log(`📊 Recruiters table exists with ${count || 0} records`);
 
     // Test service role key if available
     if (supabaseServiceKey) {
@@ -77,16 +78,16 @@ async function testSupabaseConnection() {
     // Test other tables
     console.log('\n🔍 Testing other tables...');
     
-    const { error: testimonialsError } = await supabase
+    const { count: testimonialsCount, error: testimonialsError } = await supabase
       .from('testimonials')
-      .select('count', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true });
 
-    const { error: submissionsError } = await supabase
+    const { count: submissionsCount, error: submissionsError } = await supabase
       .from('submissions')
-      .select('count', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true });
 
-    console.log('- Testimonials table:', testimonialsError ? '❌ Error' : '✅ OK');
-    console.log('- Submissions table:', submissionsError ? '❌ Error' : '✅ OK');
+    console.log('- Testimonials table:', testimonialsError ? `❌ Error: ${testimonialsError.message}` : `✅ OK (${testimonialsCount || 0} records)`);
+    console.log('- Submissions table:', submissionsError ? `❌ Error: ${submissionsError.message}` : `✅ OK (${submissionsCount || 0} records)`);
 
     console.log('\n🎉 Supabase connection test completed!');
 
