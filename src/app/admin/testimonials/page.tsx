@@ -18,8 +18,8 @@ export default function TestimonialsAdmin() {
 
   // Load recruiters data
   useEffect(() => {
-    const loadRecruiters = () => {
-      const recruiterData = RecruiterStorage.getAll()
+    const loadRecruiters = async () => {
+      const recruiterData = await RecruiterStorage.getAll()
       setRecruiters(recruiterData)
     }
     loadRecruiters()

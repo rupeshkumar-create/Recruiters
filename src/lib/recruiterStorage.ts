@@ -191,14 +191,14 @@ export class RecruiterStorage {
   }
 
   // Get a specific recruiter by ID
-  static getById(id: string): Recruiter | null {
-    const recruiters = this.getAll()
+  static async getById(id: string): Promise<Recruiter | null> {
+    const recruiters = await this.getAll()
     return recruiters.find(r => r.id === id) || null
   }
 
   // Get a specific recruiter by slug
-  static getBySlug(slug: string): Recruiter | null {
-    const recruiters = this.getAll()
+  static async getBySlug(slug: string): Promise<Recruiter | null> {
+    const recruiters = await this.getAll()
     return recruiters.find(r => r.slug === slug) || null
   }
 

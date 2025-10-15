@@ -510,7 +510,7 @@ export default function HorizontalFilter({
               )}
 
               {/* Active Filter Options */}
-              {getFilterOptions().map((option) => {
+              {getFilterOptions().map((option: string) => {
                 const isSelected = isFilterActive(activeFilterType, option)
                 const count = activeFilterType === 'specializations' 
                   ? getCategoryCount(option)
