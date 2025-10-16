@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ExternalLink, Search, Filter } from 'lucide-react'
+import { ExternalLink, Search } from 'lucide-react'
 import MultiStepSubmissionForm from './MultiStepSubmissionForm'
 import HorizontalFilter from './HorizontalFilter'
 
@@ -265,7 +265,10 @@ export default function ClientHomePage({ initialRecruiters }: ClientHomePageProp
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
+            <button 
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
               <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center relative overflow-hidden">
                 {/* Logo Design - Dark square with orange dot */}
                 <div className="w-full h-full bg-slate-800 flex items-center justify-center relative">
@@ -275,21 +278,9 @@ export default function ClientHomePage({ initialRecruiters }: ClientHomePageProp
                 </div>
               </div>
               <span className="text-xl font-bold text-gray-900">Recruiters Directory</span>
-            </div>
+            </button>
             <div className="flex items-center gap-4">
-              <a href="/about" className="text-gray-600 hover:text-gray-900">About</a>
-              <button 
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="px-3 py-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 font-medium disabled:opacity-50"
-                title="Refresh directory"
-              >
-                {isRefreshing ? (
-                  <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  '↻'
-                )}
-              </button>
+              <a href="/about" className="text-gray-600 hover:text-gray-900 font-medium">About</a>
               <button 
                 onClick={() => setShowSubmissionForm(true)}
                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium"
