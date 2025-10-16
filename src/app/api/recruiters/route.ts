@@ -116,10 +116,6 @@ export async function GET() {
     // Fallback to migration data (includes your local recruiters)
     console.log(`✅ Using migration data: ${MIGRATION_RECRUITERS.length} recruiters`);
     return NextResponse.json(MIGRATION_RECRUITERS);
-    
-    // Fallback to RecruiterStorage
-    const recruiters = await RecruiterStorage.getAll()
-    return NextResponse.json(recruiters)
   } catch (error) {
     console.error('Error fetching recruiters:', error)
     return NextResponse.json(

@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, MapPin, Star, Calendar, Briefcase, Globe, Award, Building } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { ChevronRight, MapPin, Star, Calendar, Briefcase, Globe, Award, Building, ChevronDown, Filter } from 'lucide-react'
 
 interface HorizontalFilterProps {
   categories: string[]
@@ -35,6 +36,10 @@ export default function HorizontalFilter({
   
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [activeFilterType, setActiveFilterType] = useState<string>('specializations')
+  const [showAllFiltersDropdown, setShowAllFiltersDropdown] = useState(false)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 })
+  const buttonRef = useRef<HTMLButtonElement>(null)
   
   const filters = additionalFilters || {
     locations: [],
@@ -201,7 +206,157 @@ export default function HorizontalFilter({
     }
   }, [isClient])
 
+  // Handle clicks outside dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      
+      // Check if click is on the backdrop or outside the dropdown
+      if (showAllFiltersDropdown) {
+        const dropdownContainer = target.closest('[data-dropdown-container]')
+        const isBackdrop = target.classList.contains('backdrop-blur-sm')
+        
+        if (!dropdownContainer || isBackdrop) {
+          setShowAllFiltersDropdown(false)
+        }
+      }
+    }
+    
+    if (showAllFiltersDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      // Also handle escape key
+      const handleEscape = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+          setShowAllFiltersDropdown(false)
+        }
+      }
+      document.addEventListener('keydown', handleEscape)
+      
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+        document.removeEventListener('keydown', handleEscape)
+      }
+    }
+  }, [showAllFiltersDropdown])
 
+  const handleFilterTypeChange = (filterType: string) => {
+    setActiveFilterType(filterType)
+  }
+
+  // Get filter options based on active filter type
+  const getFilterOptions = () => {
+    switch (activeFilterType) {
+      case 'specializations':
+        return getUniqueSpecializations()
+      case 'locations':
+        return getUniqueLocations()
+      case 'experience':
+        return getUniqueExperienceLevels()
+      case 'ratings':
+        return getRatingRanges()
+      case 'badges':
+        return getUniqueBadges()
+      case 'companies':
+        return getUniqueCompanies()
+      case 'remote':
+        return ['Remote Available', 'On-site Only']
+      default:
+        return []
+    }
+  }
+
+  const getFilterIcon = (filterType: string) => {
+    switch (filterType) {
+      case 'specializations': return <Briefcase className="w-4 h-4" />
+      case 'locations': return <MapPin className="w-4 h-4" />
+      case 'experience': return <Calendar className="w-4 h-4" />
+      case 'ratings': return <Star className="w-4 h-4" />
+      case 'badges': return <Award className="w-4 h-4" />
+      case 'companies': return <Building className="w-4 h-4" />
+      case 'remote': return <Globe className="w-4 h-4" />
+      default: return <Filter className="w-4 h-4" />
+    }
+  }
+
+  const isFilterActive = (filterType: string, value: string) => {
+    switch (filterType) {
+      case 'specializations':
+        return selectedCategories.includes(value) && !selectedCategories.includes('All')
+      case 'locations':
+        return filters.locations.includes(value)
+      case 'experience':
+        return filters.experienceLevels.includes(value)
+      case 'ratings':
+        return filters.ratings.includes(value)
+      case 'badges':
+        return filters.badges.includes(value)
+      case 'companies':
+        return filters.companies.includes(value)
+      case 'remote':
+        if (value === 'Remote Available') return filters.remoteAvailable === true
+        if (value === 'On-site Only') return filters.remoteAvailable === false
+        return false
+      default:
+        return false
+    }
+  }
+
+  const handleFilterOptionClick = (filterType: string, value: string) => {
+    if (filterType === 'specializations') {
+      handleCategoryToggle(value)
+    } else if (filterType === 'remote') {
+      const remoteValue = value === 'Remote Available' ? true : false
+      handleAdvancedFilterChange('remoteAvailable', remoteValue)
+    } else if (filterType === 'experience') {
+      handleAdvancedFilterChange('experienceLevels', value)
+    } else {
+      handleAdvancedFilterChange(filterType as keyof FilterState, value)
+    }
+  }
+
+  const getFilterCount = (filterType: string, option: string): number => {
+    if (filterType === 'specializations') {
+      return getCategoryCount(option)
+    }
+    
+    return tools.filter(tool => {
+      if (tool.hidden) return false
+      switch (filterType) {
+        case 'locations':
+          const location = tool.location.split(',').pop()?.trim() || tool.location
+          const normalizedLocation = location === 'CA' || location === 'NY' || location === 'TX' || location === 'IL' || location === 'MA' || location === 'WA' || location === 'GA' || location === 'FL' || location === 'MI' || location === 'MN' || location === 'AZ' || location === 'OR' || location === 'CO' || location === 'VA' || location === 'PA' || location === 'DC' ? 'United States' : location
+          return normalizedLocation === option
+        case 'experience':
+          const exp = tool.experience?.toLowerCase() || ''
+          if (option === '1-3 years') return exp.includes('1') || exp.includes('2') || exp.includes('3')
+          if (option === '4-6 years') return exp.includes('4') || exp.includes('5') || exp.includes('6')
+          if (option === '7-9 years') return exp.includes('7') || exp.includes('8') || exp.includes('9')
+          if (option === '10+ years') return exp.includes('10') || exp.includes('15')
+          return false
+        case 'ratings':
+          const rating = tool.rating || 0
+          if (option === '4.5+ Stars') return rating >= 4.5
+          if (option === '4.0+ Stars') return rating >= 4.0
+          if (option === '3.5+ Stars') return rating >= 3.5
+          return true
+        case 'badges':
+          const badgeMap: { [key: string]: string } = {
+            'Top Rated': 'top-rated',
+            'Verified': 'verified',
+            'Rising Star': 'rising-star'
+          }
+          return tool.badge === badgeMap[option]
+        case 'companies':
+          return tool.company === option
+        case 'remote':
+          if (option === 'Remote Available') return tool.remoteAvailable === true
+          if (option === 'On-site Only') return tool.remoteAvailable === false
+          return false
+        default:
+          return false
+      }
+    }).length
+  }
 
   const handleCategoryToggle = (category: string, event?: React.MouseEvent) => {
     if (event) {
@@ -351,6 +506,45 @@ export default function HorizontalFilter({
               className="flex items-center gap-3 overflow-x-auto scrollbar-hide pb-2 scroll-smooth pr-12" 
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overflowY: 'visible' }}
             >
+              {/* All Filters Dropdown Button */}
+              <div className="relative" data-dropdown-container>
+                <motion.button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    console.log('All Filters clicked, current state:', showAllFiltersDropdown)
+                    
+                    if (!showAllFiltersDropdown && buttonRef.current) {
+                      const rect = buttonRef.current.getBoundingClientRect()
+                      setDropdownPosition({
+                        top: rect.bottom + 8,
+                        left: rect.left
+                      })
+                    }
+                    
+                    setShowAllFiltersDropdown(!showAllFiltersDropdown)
+                  }}
+                  ref={buttonRef}
+                  tabIndex={0}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                    showAllFiltersDropdown
+                      ? 'bg-orange-500 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Filter className="w-4 h-4" />
+                  <span>All Filters</span>
+                  {getActiveFiltersCount() > 0 && (
+                    <span className="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                      {getActiveFiltersCount()}
+                    </span>
+                  )}
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showAllFiltersDropdown ? 'rotate-180' : ''}`} />
+                </motion.button>
+              </div>
+
               {/* All Recruiters Button - Always visible */}
               <motion.button
                 onClick={(e) => {
@@ -388,18 +582,18 @@ export default function HorizontalFilter({
                 </span>
               </motion.button>
 
-              {/* Specializations */}
-              {getUniqueSpecializations().map((option: string) => {
-                const isSelected = selectedCategories.includes(option) && !selectedCategories.includes('All')
-                const count = getCategoryCount(option)
+              {/* Dynamic Filter Options Based on Active Type */}
+              {getFilterOptions().map((option: string) => {
+                const isSelected = isFilterActive(activeFilterType, option)
+                const count = getFilterCount(activeFilterType, option)
                 
                 return (
                   <motion.button
-                    key={`spec-${option}`}
+                    key={`${activeFilterType}-${option}`}
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      handleCategoryToggle(option)
+                      handleFilterOptionClick(activeFilterType, option)
                     }}
                     onFocus={(e) => {
                       e.preventDefault()
@@ -421,321 +615,7 @@ export default function HorizontalFilter({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <Briefcase className="w-4 h-4" />
-                    <span>{option}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      isSelected 
-                        ? 'bg-white/20 text-white' 
-                        : 'bg-white text-gray-600'
-                    }`}>
-                      {count}
-                    </span>
-                  </motion.button>
-                )
-              })}
-
-              {/* Locations */}
-              {getUniqueLocations().map((option: string) => {
-                const isSelected = filters.locations.includes(option)
-                const count = tools.filter(tool => {
-                  if (tool.hidden) return false
-                  const location = tool.location.split(',').pop()?.trim() || tool.location
-                  const normalizedLocation = location === 'CA' || location === 'NY' || location === 'TX' || location === 'IL' || location === 'MA' || location === 'WA' || location === 'GA' || location === 'FL' || location === 'MI' || location === 'MN' || location === 'AZ' || location === 'OR' || location === 'CO' || location === 'VA' || location === 'PA' || location === 'DC' ? 'United States' : location
-                  return normalizedLocation === option
-                }).length
-                
-                return (
-                  <motion.button
-                    key={`loc-${option}`}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleAdvancedFilterChange('locations', option)
-                    }}
-                    onFocus={(e) => {
-                      e.preventDefault()
-                      e.currentTarget.blur()
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      const scrollY = window.scrollY
-                      setTimeout(() => {
-                        window.scrollTo(0, scrollY)
-                      }, 0)
-                    }}
-                    tabIndex={-1}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                      isSelected
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <MapPin className="w-4 h-4" />
-                    <span>{option}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      isSelected 
-                        ? 'bg-white/20 text-white' 
-                        : 'bg-white text-gray-600'
-                    }`}>
-                      {count}
-                    </span>
-                  </motion.button>
-                )
-              })}
-
-              {/* Experience Levels */}
-              {getUniqueExperienceLevels().map((option: string) => {
-                const isSelected = filters.experienceLevels.includes(option)
-                const count = tools.filter(tool => {
-                  if (tool.hidden) return false
-                  const exp = tool.experience?.toLowerCase() || ''
-                  if (option === '1-3 years') return exp.includes('1') || exp.includes('2') || exp.includes('3')
-                  if (option === '4-6 years') return exp.includes('4') || exp.includes('5') || exp.includes('6')
-                  if (option === '7-9 years') return exp.includes('7') || exp.includes('8') || exp.includes('9')
-                  if (option === '10+ years') return exp.includes('10') || exp.includes('15')
-                  return false
-                }).length
-                
-                return (
-                  <motion.button
-                    key={`exp-${option}`}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleAdvancedFilterChange('experienceLevels', option)
-                    }}
-                    onFocus={(e) => {
-                      e.preventDefault()
-                      e.currentTarget.blur()
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      const scrollY = window.scrollY
-                      setTimeout(() => {
-                        window.scrollTo(0, scrollY)
-                      }, 0)
-                    }}
-                    tabIndex={-1}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                      isSelected
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Calendar className="w-4 h-4" />
-                    <span>{option}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      isSelected 
-                        ? 'bg-white/20 text-white' 
-                        : 'bg-white text-gray-600'
-                    }`}>
-                      {count}
-                    </span>
-                  </motion.button>
-                )
-              })}
-
-              {/* Ratings */}
-              {getRatingRanges().map((option: string) => {
-                const isSelected = filters.ratings.includes(option)
-                const count = tools.filter(tool => {
-                  if (tool.hidden) return false
-                  const rating = tool.rating || 0
-                  if (option === '4.5+ Stars') return rating >= 4.5
-                  if (option === '4.0+ Stars') return rating >= 4.0
-                  if (option === '3.5+ Stars') return rating >= 3.5
-                  return true
-                }).length
-                
-                return (
-                  <motion.button
-                    key={`rating-${option}`}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleAdvancedFilterChange('ratings', option)
-                    }}
-                    onFocus={(e) => {
-                      e.preventDefault()
-                      e.currentTarget.blur()
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      const scrollY = window.scrollY
-                      setTimeout(() => {
-                        window.scrollTo(0, scrollY)
-                      }, 0)
-                    }}
-                    tabIndex={-1}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                      isSelected
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Star className="w-4 h-4" />
-                    <span>{option}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      isSelected 
-                        ? 'bg-white/20 text-white' 
-                        : 'bg-white text-gray-600'
-                    }`}>
-                      {count}
-                    </span>
-                  </motion.button>
-                )
-              })}
-
-              {/* Badges */}
-              {getUniqueBadges().map((option: string) => {
-                const isSelected = filters.badges.includes(option)
-                const badgeMap: { [key: string]: string } = {
-                  'Top Rated': 'top-rated',
-                  'Verified': 'verified',
-                  'Rising Star': 'rising-star'
-                }
-                const count = tools.filter(tool => {
-                  if (tool.hidden) return false
-                  return tool.badge === badgeMap[option]
-                }).length
-                
-                return (
-                  <motion.button
-                    key={`badge-${option}`}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleAdvancedFilterChange('badges', option)
-                    }}
-                    onFocus={(e) => {
-                      e.preventDefault()
-                      e.currentTarget.blur()
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      const scrollY = window.scrollY
-                      setTimeout(() => {
-                        window.scrollTo(0, scrollY)
-                      }, 0)
-                    }}
-                    tabIndex={-1}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                      isSelected
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Award className="w-4 h-4" />
-                    <span>{option}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      isSelected 
-                        ? 'bg-white/20 text-white' 
-                        : 'bg-white text-gray-600'
-                    }`}>
-                      {count}
-                    </span>
-                  </motion.button>
-                )
-              })}
-
-              {/* Companies */}
-              {getUniqueCompanies().map((option: string) => {
-                const isSelected = filters.companies.includes(option)
-                const count = tools.filter(tool => {
-                  if (tool.hidden) return false
-                  return tool.company === option
-                }).length
-                
-                return (
-                  <motion.button
-                    key={`company-${option}`}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleAdvancedFilterChange('companies', option)
-                    }}
-                    onFocus={(e) => {
-                      e.preventDefault()
-                      e.currentTarget.blur()
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      const scrollY = window.scrollY
-                      setTimeout(() => {
-                        window.scrollTo(0, scrollY)
-                      }, 0)
-                    }}
-                    tabIndex={-1}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                      isSelected
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Building className="w-4 h-4" />
-                    <span>{option}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      isSelected 
-                        ? 'bg-white/20 text-white' 
-                        : 'bg-white text-gray-600'
-                    }`}>
-                      {count}
-                    </span>
-                  </motion.button>
-                )
-              })}
-
-              {/* Remote Work Options */}
-              {['Remote Available', 'On-site Only'].map((option: string) => {
-                const isSelected = (option === 'Remote Available' && filters.remoteAvailable === true) || 
-                                 (option === 'On-site Only' && filters.remoteAvailable === false)
-                const count = tools.filter(tool => {
-                  if (tool.hidden) return false
-                  if (option === 'Remote Available') return tool.remoteAvailable === true
-                  if (option === 'On-site Only') return tool.remoteAvailable === false
-                  return false
-                }).length
-                
-                return (
-                  <motion.button
-                    key={`remote-${option}`}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      const remoteValue = option === 'Remote Available' ? true : false
-                      handleAdvancedFilterChange('remoteAvailable', remoteValue)
-                    }}
-                    onFocus={(e) => {
-                      e.preventDefault()
-                      e.currentTarget.blur()
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      const scrollY = window.scrollY
-                      setTimeout(() => {
-                        window.scrollTo(0, scrollY)
-                      }, 0)
-                    }}
-                    tabIndex={-1}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                      isSelected
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Globe className="w-4 h-4" />
+                    {getFilterIcon(activeFilterType)}
                     <span>{option}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       isSelected 
@@ -802,7 +682,88 @@ export default function HorizontalFilter({
         }
       `}</style>
 
-
+      {/* Portal-based Dropdown with Backdrop */}
+      {typeof window !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showAllFiltersDropdown && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/20 backdrop-blur-sm"
+                style={{ zIndex: 9998 }}
+                onClick={() => setShowAllFiltersDropdown(false)}
+              />
+              
+              {/* Dropdown */}
+              <motion.div
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ 
+                  duration: 0.2,
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30
+                }}
+                className="fixed w-64 bg-white rounded-lg shadow-2xl border border-gray-200"
+                style={{
+                  zIndex: 9999,
+                  top: dropdownPosition.top,
+                  left: dropdownPosition.left
+                }}
+                data-dropdown-container
+              >
+                <div className="p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Filter Options</h3>
+                  <div className="space-y-2">
+                    {[
+                      { key: 'specializations', label: 'Specialization', icon: <Briefcase className="w-4 h-4" /> },
+                      { key: 'locations', label: 'Location', icon: <MapPin className="w-4 h-4" /> },
+                      { key: 'experience', label: 'Experience', icon: <Calendar className="w-4 h-4" /> },
+                      { key: 'ratings', label: 'Rating', icon: <Star className="w-4 h-4" /> },
+                      { key: 'badges', label: 'Badge', icon: <Award className="w-4 h-4" /> },
+                      { key: 'companies', label: 'Company', icon: <Building className="w-4 h-4" /> },
+                      { key: 'remote', label: 'Work Type', icon: <Globe className="w-4 h-4" /> }
+                    ].map((filterType) => (
+                      <motion.button
+                        key={filterType.key}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          console.log('Filter type clicked:', filterType.key)
+                          handleFilterTypeChange(filterType.key)
+                          setShowAllFiltersDropdown(false)
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-all duration-200 ${
+                          activeFilterType === filterType.key
+                            ? 'bg-orange-50 text-orange-700 border border-orange-200 shadow-sm'
+                            : 'text-gray-700 hover:bg-gray-50 hover:shadow-sm'
+                        }`}
+                        whileHover={{ x: 2, scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {filterType.icon}
+                        <span>{filterType.label}</span>
+                        {activeFilterType === filterType.key && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="ml-auto w-2 h-2 bg-orange-500 rounded-full"
+                          />
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   )
 }
