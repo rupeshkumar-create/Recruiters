@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 
 export async function GET() {
-  const debug = {
+  const debug: any = {
     timestamp: new Date().toISOString(),
     environment: {
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Missing',
