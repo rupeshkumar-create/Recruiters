@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Select Filter Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .filter-demo {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 10px 0;
+        }
+        .filter-button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .filter-button.active {
+            background: #f97316;
+            color: white;
+            border-color: #f97316;
+        }
+        .filter-button:hover {
+            background: #e5e7eb;
+        }
+        .filter-button.active:hover {
+            background: #ea580c;
+        }
+        .clear-button {
+            padding: 8px 16px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .clear-button:hover {
+            background: #dc2626;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            border-radius: 6px;
+            z-index: 1;
+            top: 100%;
+            left: 0;
+            margin-top: 5px;
+        }
+        .dropdown-content.show {
+            display: block;
+        }
+        .dropdown-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .dropdown-item:hover {
+            background-color: #f1f1f1;
+        }
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        .backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.1);
+            backdrop-filter: blur(2px);
+            z-index: 999;
+            display: none;
+        }
+        .backdrop.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Multi-Select Filter System Test</h1>
+    
+    <div class="test-section">
+        <h2>Filter Requirements Test</h2>
+        <p><strong>Requirements:</strong></p>
+        <ul>
+            <li>✅ Visitors can select more than one filter option</li>
+            <li>✅ When 2+ filters are selected, show "Clear Options"</li>
+            <li>✅ Show ALL filter types all the time (no dropdown needed)</li>
+            <li>✅ All filter options are visible simultaneously</li>
+            <li>✅ Each filter type has its own icon and styling</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>All Filters Visible Demo</h2>
+        
+        <!-- Main Filter Bar - All filters visible at once -->
+        <div class="filter-demo">
+            <!-- All Recruiters Button -->
+            <button class="filter-button active" id="allRecruiters">All Recruiters (150)</button>
+            
+            <!-- Specializations -->
+            <button class="filter-button" data-type="specialization" data-option="Frontend Development">🔧 Frontend Development (25)</button>
+            <button class="filter-button" data-type="specialization" data-option="Backend Development">🔧 Backend Development (30)</button>
+            <button class="filter-button" data-type="specialization" data-option="Full Stack">🔧 Full Stack (20)</button>
+            <button class="filter-button" data-type="specialization" data-option="DevOps">🔧 DevOps (15)</button>
+            
+            <!-- Locations -->
+            <button class="filter-button" data-type="location" data-option="United States">📍 United States (85)</button>
+            <button class="filter-button" data-type="location" data-option="Canada">📍 Canada (25)</button>
+            <button class="filter-button" data-type="location" data-option="United Kingdom">📍 United Kingdom (20)</button>
+            
+            <!-- Experience -->
+            <button class="filter-button" data-type="experience" data-option="1-3 years">📅 1-3 years (30)</button>
+            <button class="filter-button" data-type="experience" data-option="4-6 years">📅 4-6 years (45)</button>
+            <button class="filter-button" data-type="experience" data-option="7-9 years">📅 7-9 years (35)</button>
+            <button class="filter-button" data-type="experience" data-option="10+ years">📅 10+ years (40)</button>
+            
+            <!-- Ratings -->
+            <button class="filter-button" data-type="rating" data-option="4.5+ Stars">⭐ 4.5+ Stars (25)</button>
+            <button class="filter-button" data-type="rating" data-option="4.0+ Stars">⭐ 4.0+ Stars (60)</button>
+            
+            <!-- Badges -->
+            <button class="filter-button" data-type="badge" data-option="Top Rated">🏆 Top Rated (15)</button>
+            <button class="filter-button" data-type="badge" data-option="Verified">🏆 Verified (45)</button>
+            
+            <!-- Companies -->
+            <button class="filter-button" data-type="company" data-option="Google">🏢 Google (8)</button>
+            <button class="filter-button" data-type="company" data-option="Microsoft">🏢 Microsoft (12)</button>
+            
+            <!-- Remote Work -->
+            <button class="filter-button" data-type="remote" data-option="Remote Available">🌐 Remote Available (75)</button>
+            <button class="filter-button" data-type="remote" data-option="On-site Only">🌐 On-site Only (75)</button>
+            
+            <!-- Clear Options Button (hidden by default) -->
+            <button class="clear-button" id="clearBtn" style="display: none;">Clear Options</button>
+        </div>
+        
+        <div class="results" id="results">
+            <strong>Selected Filters:</strong> All Recruiters<br>
+            <strong>Filter Types:</strong> All visible simultaneously<br>
+            <strong>Results:</strong> Showing 150 recruiters
+        </div>
+    </div>
+
+    <script>
+        let selectedFilters = ['All Recruiters'];
+        
+        function updateResults() {
+            const resultsDiv = document.getElementById('results');
+            const clearBtn = document.getElementById('clearBtn');
+            
+            // Update clear button visibility
+            const totalFilters = selectedFilters.filter(f => f !== 'All Recruiters').length;
+            if (totalFilters >= 2) {
+                clearBtn.style.display = 'block';
+            } else {
+                clearBtn.style.display = 'none';
+            }
+            
+            // Update results
+            const activeFilters = selectedFilters.join(', ');
+            const resultCount = selectedFilters.includes('All Recruiters') ? 150 : Math.floor(Math.random() * 100) + 10;
+            
+            resultsDiv.innerHTML = `
+                <strong>Selected Filters:</strong> ${activeFilters}<br>
+                <strong>Filter Types:</strong> All visible simultaneously<br>
+                <strong>Results:</strong> Showing ${resultCount} recruiters
+            `;
+        }
+        
+        // All Recruiters button
+        document.getElementById('allRecruiters').addEventListener('click', function() {
+            selectedFilters = ['All Recruiters'];
+            this.classList.add('active');
+            
+            // Deactivate other filters
+            document.querySelectorAll('[data-option]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            updateResults();
+        });
+        
+        // Filter option buttons (event delegation)
+        document.addEventListener('click', function(e) {
+            if (e.target.hasAttribute('data-option')) {
+                const option = e.target.getAttribute('data-option');
+                
+                // Remove "All Recruiters" if selecting specific options
+                if (selectedFilters.includes('All Recruiters')) {
+                    selectedFilters = selectedFilters.filter(f => f !== 'All Recruiters');
+                    document.getElementById('allRecruiters').classList.remove('active');
+                }
+                
+                // Toggle the selected option
+                if (selectedFilters.includes(option)) {
+                    selectedFilters = selectedFilters.filter(f => f !== option);
+                    e.target.classList.remove('active');
+                } else {
+                    selectedFilters.push(option);
+                    e.target.classList.add('active');
+                }
+                
+                // If no filters selected, default to "All Recruiters"
+                if (selectedFilters.length === 0) {
+                    selectedFilters = ['All Recruiters'];
+                    document.getElementById('allRecruiters').classList.add('active');
+                }
+                
+                updateResults();
+            }
+        });
+        
+        // Clear Options button
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            selectedFilters = ['All Recruiters'];
+            document.getElementById('allRecruiters').classList.add('active');
+            
+            // Deactivate all other filters
+            document.querySelectorAll('[data-option]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            updateResults();
+        });
+        
+        // Initialize
+        updateResults();
+    </script>
+</body>
+</html>

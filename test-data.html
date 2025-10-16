@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Data Loading</title>
+</head>
+<body>
+    <h1>Testing Data Loading</h1>
+    <div id="output"></div>
+    
+    <script>
+        async function testDataLoading() {
+            const output = document.getElementById('output');
+            
+            try {
+                // Test 1: Check if we can access the data
+                output.innerHTML += '<p>Testing data import...</p>';
+                
+                // Simulate what the homepage does
+                const response = await fetch('/api/recruiters');
+                const data = await response.json();
+                
+                output.innerHTML += `<p>API Response: ${data.length} recruiters</p>`;
+                output.innerHTML += `<p>First recruiter: ${data[0]?.name || 'None'}</p>`;
+                
+            } catch (error) {
+                output.innerHTML += `<p>Error: ${error.message}</p>`;
+            }
+        }
+        
+        testDataLoading();
+    </script>
+</body>
+</html>

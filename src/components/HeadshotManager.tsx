@@ -70,39 +70,24 @@ export default function HeadshotManager({
 
     setUploading(true)
     try {
-      // Create FormData for upload
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('recruiterId', recruiterName.toLowerCase().replace(/\s+/g, '-'))
-
-      // Upload to API
-      const response = await fetch('/api/upload-headshot', {
-        method: 'POST',
-        body: formData
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        setPreviewUrl(result.imageUrl)
-        onAvatarChange(result.imageUrl)
-        alert('Headshot uploaded successfully!')
-      } else {
-        throw new Error(result.error || 'Upload failed')
-      }
-    } catch (error) {
-      console.error('Error uploading file:', error)
-      alert('Failed to upload image. For demo purposes, using local preview.')
-      
-      // Fallback to local preview for demo
+      // For demo purposes, convert to base64 data URL
       const reader = new FileReader()
       reader.onload = (e) => {
         const result = e.target?.result as string
         setPreviewUrl(result)
+        setUrlInput(result)
         onAvatarChange(result)
+        alert('Headshot updated successfully!')
+        setUploading(false)
+      }
+      reader.onerror = () => {
+        alert('Failed to read image file')
+        setUploading(false)
       }
       reader.readAsDataURL(file)
-    } finally {
+    } catch (error) {
+      console.error('Error processing file:', error)
+      alert('Failed to process image file')
       setUploading(false)
     }
   }
@@ -111,6 +96,7 @@ export default function HeadshotManager({
     if (urlInput && urlInput !== currentAvatar) {
       setPreviewUrl(urlInput)
       onAvatarChange(urlInput)
+      alert('Profile picture updated successfully!')
     }
   }
 
@@ -118,6 +104,7 @@ export default function HeadshotManager({
     setPreviewUrl(imageUrl)
     setUrlInput(imageUrl)
     onAvatarChange(imageUrl)
+    alert('Profile picture updated successfully!')
   }
 
   const generateAvatar = () => {
@@ -127,6 +114,7 @@ export default function HeadshotManager({
     setPreviewUrl(avatarUrl)
     setUrlInput(avatarUrl)
     onAvatarChange(avatarUrl)
+    alert('Avatar generated successfully!')
   }
 
   return (

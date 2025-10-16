@@ -18,11 +18,35 @@ interface MultiStepSubmissionFormProps {
 interface WorkExperience {
   jobTitle: string
   company: string
+  startYear: string
+  endYear: string
+  isCurrentRole: boolean
   duration: string
   description?: string
 }
 
 type Step = 'basic' | 'performance' | 'professional' | 'review'
+
+// Utility function to convert text to proper case
+const toProperCase = (text: string): string => {
+  return text
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+    .replace(/\b(and|or|the|a|an|in|on|at|to|for|of|with|by)\b/gi, (match) => match.toLowerCase())
+    .replace(/^(and|or|the|a|an|in|on|at|to|for|of|with|by)\b/gi, (match) => match.charAt(0).toUpperCase() + match.slice(1).toLowerCase())
+}
+
+// Generate year options for work experience
+const generateYearOptions = () => {
+  const currentYear = new Date().getFullYear()
+  const years = []
+  for (let year = currentYear; year >= currentYear - 30; year--) {
+    years.push(year.toString())
+  }
+  return years
+}
 
 export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSubmissionFormProps) {
   const [currentStep, setCurrentStep] = useState<Step>('basic')
@@ -116,6 +140,7 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
       setErrors({})
       setSubmitted(false)
       setUploadedImage(null)
+      setIsSubmitting(false)
     }
   }, [isOpen])
 
@@ -196,18 +221,48 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
       workExperience: [...prev.workExperience, {
         jobTitle: '',
         company: '',
+        startYear: '',
+        endYear: '',
+        isCurrentRole: false,
         duration: '',
         description: ''
       }]
     }))
   }
 
-  const updateWorkExperience = (index: number, field: keyof WorkExperience, value: string) => {
+  const updateWorkExperience = (index: number, field: keyof WorkExperience, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
-      workExperience: prev.workExperience.map((exp, i) => 
-        i === index ? { ...exp, [field]: value } : exp
-      )
+      workExperience: prev.workExperience.map((exp, i) => {
+        if (i === index) {
+          const updatedExp = { ...exp, [field]: value }
+          
+          // Auto-format job title and company to proper case
+          if (field === 'jobTitle' && typeof value === 'string') {
+            updatedExp.jobTitle = toProperCase(value)
+          }
+          if (field === 'company' && typeof value === 'string') {
+            updatedExp.company = toProperCase(value)
+          }
+          
+          // Update duration when years change
+          if (field === 'startYear' || field === 'endYear' || field === 'isCurrentRole') {
+            if (updatedExp.startYear) {
+              if (updatedExp.isCurrentRole) {
+                updatedExp.duration = `${updatedExp.startYear} - Present`
+                updatedExp.endYear = ''
+              } else if (updatedExp.endYear) {
+                updatedExp.duration = `${updatedExp.startYear} - ${updatedExp.endYear}`
+              } else {
+                updatedExp.duration = updatedExp.startYear
+              }
+            }
+          }
+          
+          return updatedExp
+        }
+        return exp
+      })
     }))
   }
 
@@ -318,18 +373,27 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
   const goToNextStep = () => {
     let isValid = false
     
+    // Clear previous errors
+    setErrors({})
+    
     switch (currentStep) {
       case 'basic':
         isValid = validateBasicInfo()
-        if (isValid) setCurrentStep('performance')
+        if (isValid) {
+          setCurrentStep('performance')
+        }
         break
       case 'performance':
         isValid = validatePerformance()
-        if (isValid) setCurrentStep('professional')
+        if (isValid) {
+          setCurrentStep('professional')
+        }
         break
       case 'professional':
         isValid = validateProfessional()
-        if (isValid) setCurrentStep('review')
+        if (isValid) {
+          setCurrentStep('review')
+        }
         break
     }
   }
@@ -350,34 +414,46 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
+    setErrors({}) // Clear any previous errors
     
     try {
+      // Final validation before submission
+      const isBasicValid = validateBasicInfo()
+      const isPerformanceValid = validatePerformance()
+      const isProfessionalValid = validateProfessional()
+      
+      if (!isBasicValid || !isPerformanceValid || !isProfessionalValid) {
+        setIsSubmitting(false)
+        setErrors({ submit: 'Please fix all validation errors before submitting.' })
+        return
+      }
+
       // Prepare submission data
       const submissionData = {
         // Basic info
-        name: formData.name,
-        jobTitle: formData.jobTitle,
-        company: formData.company,
-        email: formData.email,
-        phone: formData.phone,
-        linkedin: formData.linkedin,
-        website: formData.website,
-        location: formData.location,
-        experience: formData.experience,
-        bio: formData.bio,
-        avatar: formData.avatar,
+        name: formData.name.trim(),
+        jobTitle: formData.jobTitle.trim(),
+        company: formData.company.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        linkedin: formData.linkedin.trim(),
+        website: formData.website?.trim() || '',
+        location: formData.location.trim(),
+        experience: formData.experience.trim(),
+        bio: formData.bio.trim(),
+        avatar: formData.avatar || '',
         
         // Specializations
         specializations: formData.specializations,
         
-        // Performance metrics
+        // Performance metrics - ensure they are numbers
         placements: parseInt(formData.performanceMetrics.placements) || 0,
         avgTimeToHire: parseInt(formData.performanceMetrics.avgTimeToHire) || 30,
         candidateSatisfaction: parseInt(formData.performanceMetrics.candidateSatisfaction) || 90,
         clientRetention: parseInt(formData.performanceMetrics.clientRetention) || 85,
         
         // Professional details
-        achievements: formData.achievements,
+        achievements: formData.achievements.filter(a => a.trim()),
         workExperience: formData.workExperience,
         rolesPlaced: formData.rolesPlaced,
         industries: formData.industries,
@@ -388,19 +464,14 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
         regions: formData.regions,
         
         // Optional fields
-        certifications: formData.certifications,
+        certifications: formData.certifications || [],
         availability: formData.availability,
         socialProof: {
           linkedinFollowers: parseInt(formData.socialProof.linkedinFollowers) || 0,
-          featuredIn: formData.socialProof.featuredIn
-        },
-        
-        // Status
-        status: 'pending',
-        approved: false,
-        hidden: true // Hidden until approved
+          featuredIn: formData.socialProof.featuredIn || []
+        }
       }
-      
+
       const response = await fetch('/api/submissions', {
         method: 'POST',
         headers: {
@@ -409,9 +480,10 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
         body: JSON.stringify(submissionData),
       })
 
+      const responseData = await response.json()
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to submit profile')
+        throw new Error(responseData.error || `Server error: ${response.status}`)
       }
 
       setIsSubmitting(false)
@@ -431,18 +503,21 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
           socialProof: { linkedinFollowers: '', featuredIn: [] }
         })
         setUploadedImage(null)
+        setCurrentStep('basic')
         onClose()
       }, 3000)
     } catch (error) {
       console.error('Submission error:', error)
       setIsSubmitting(false)
-      setErrors({ submit: 'Failed to submit profile. Please try again.' })
+      setErrors({ submit: `Failed to submit profile: ${error instanceof Error ? error.message : 'Unknown error'}` })
     }
   }
 
   const handleClose = () => {
     onClose()
   }
+
+
 
   if (!isOpen) return null
 
@@ -521,7 +596,20 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
 
               {errors.submit && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-800 text-sm font-medium">Submission Error:</p>
                   <p className="text-red-800 text-sm">{errors.submit}</p>
+                </div>
+              )}
+
+              {/* Show validation errors summary */}
+              {Object.keys(errors).length > 0 && !errors.submit && (
+                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-yellow-800 text-sm font-medium">Please fix the following issues:</p>
+                  <ul className="text-yellow-800 text-sm mt-2 list-disc list-inside">
+                    {Object.entries(errors).map(([field, error]) => (
+                      <li key={field}>{error}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
@@ -576,7 +664,7 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
                           <Label>Full Name *</Label>
                           <Input
                             value={formData.name}
-                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                            onChange={(e) => setFormData(prev => ({ ...prev, name: toProperCase(e.target.value) }))}
                             placeholder="Enter your full name"
                             className={errors.name ? 'border-red-500' : ''}
                           />
@@ -587,7 +675,7 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
                           <Label>Job Title *</Label>
                           <Input
                             value={formData.jobTitle}
-                            onChange={(e) => setFormData(prev => ({ ...prev, jobTitle: e.target.value }))}
+                            onChange={(e) => setFormData(prev => ({ ...prev, jobTitle: toProperCase(e.target.value) }))}
                             placeholder="e.g., Senior Technical Recruiter"
                             className={errors.jobTitle ? 'border-red-500' : ''}
                           />
@@ -598,7 +686,7 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
                           <Label>Company *</Label>
                           <Input
                             value={formData.company}
-                            onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
+                            onChange={(e) => setFormData(prev => ({ ...prev, company: toProperCase(e.target.value) }))}
                             placeholder="Company name"
                             className={errors.company ? 'border-red-500' : ''}
                           />
@@ -654,7 +742,7 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
                           <Label>Location *</Label>
                           <Input
                             value={formData.location}
-                            onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                            onChange={(e) => setFormData(prev => ({ ...prev, location: toProperCase(e.target.value) }))}
                             placeholder="City, State/Country"
                             className={errors.location ? 'border-red-500' : ''}
                           />
@@ -881,14 +969,56 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
                                   />
                                   {errors[`workExp${index}Company`] && <p className="text-red-500 text-sm mt-1">{errors[`workExp${index}Company`]}</p>}
                                 </div>
-                                <div>
+                                <div className="md:col-span-2">
                                   <Label>Duration *</Label>
-                                  <Input
-                                    value={exp.duration}
-                                    onChange={(e) => updateWorkExperience(index, 'duration', e.target.value)}
-                                    placeholder="e.g., 2020-2023"
-                                    className={errors[`workExp${index}Duration`] ? 'border-red-500' : ''}
-                                  />
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                    <div>
+                                      <Label className="text-sm">Start Year</Label>
+                                      <Select
+                                        value={exp.startYear}
+                                        onValueChange={(value) => updateWorkExperience(index, 'startYear', value)}
+                                      >
+                                        <SelectTrigger className={errors[`workExp${index}Duration`] ? 'border-red-500' : ''}>
+                                          <SelectValue placeholder="Select year" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {generateYearOptions().map(year => (
+                                            <SelectItem key={year} value={year}>{year}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm">End Year</Label>
+                                      <Select
+                                        value={exp.endYear}
+                                        onValueChange={(value) => updateWorkExperience(index, 'endYear', value)}
+                                        disabled={exp.isCurrentRole}
+                                      >
+                                        <SelectTrigger className={exp.isCurrentRole ? 'opacity-50' : ''}>
+                                          <SelectValue placeholder={exp.isCurrentRole ? "Present" : "Select year"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {generateYearOptions().map(year => (
+                                            <SelectItem key={year} value={year}>{year}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`current-role-${index}`}
+                                        checked={exp.isCurrentRole}
+                                        onCheckedChange={(checked) => updateWorkExperience(index, 'isCurrentRole', checked as boolean)}
+                                      />
+                                      <Label htmlFor={`current-role-${index}`} className="text-sm">
+                                        Current Role
+                                      </Label>
+                                    </div>
+                                  </div>
+                                  {exp.duration && (
+                                    <p className="text-sm text-gray-600 mt-2">Duration: {exp.duration}</p>
+                                  )}
                                   {errors[`workExp${index}Duration`] && <p className="text-red-500 text-sm mt-1">{errors[`workExp${index}Duration`]}</p>}
                                 </div>
                                 <div>
@@ -1330,6 +1460,8 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
                   </div>
                 )}
               </div>
+
+
 
               {/* Navigation Buttons */}
               <div className="flex justify-between items-center pt-6 border-t border-gray-200">

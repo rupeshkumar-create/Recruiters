@@ -103,14 +103,42 @@ export default function EditRecruitersPage() {
 
   useEffect(() => {
     refreshRecruiters()
+    
+    // Listen for visibility changes to refresh when tab becomes active
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshRecruiters()
+      }
+    }
+    
+    // Listen for custom events from other parts of the app
+    const handleRecruitersUpdated = () => {
+      refreshRecruiters()
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('recruitersUpdated', handleRecruitersUpdated)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('recruitersUpdated', handleRecruitersUpdated)
+    }
   }, [])
 
   const refreshRecruiters = async () => {
     try {
       setLoading(true)
-      // Load from Supabase/storage
-      const recruiters = await RecruiterStorage.getAll()
-      setRecruiters(recruiters)
+      // Load from API to get the latest data including approved recruiters
+      const response = await fetch('/api/recruiters')
+      if (response.ok) {
+        const recruiters = await response.json()
+        setRecruiters(recruiters)
+      } else {
+        console.error('Failed to load recruiters from API')
+        // Fallback to RecruiterStorage
+        const recruiters = await RecruiterStorage.getAll()
+        setRecruiters(recruiters)
+      }
     } catch (error) {
       console.error('Error fetching recruiters:', error)
       // Fallback to sync storage
@@ -282,19 +310,45 @@ export default function EditRecruitersPage() {
       }
 
       const result = await response.json()
+      console.log('API response:', result)
       
-      // Update local state
-      setRecruiters(prev => prev.map(recruiter => 
-        recruiter.id === editingRecruiter.id 
-          ? { ...recruiter, ...editForm }
-          : recruiter
-      ))
-      
+      // Close the edit modal first
       setEditingRecruiter(null)
-      alert('Recruiter profile updated successfully!')
       
-      // Notify homepage to refresh
+      // Refresh the recruiters list from API to get the latest data
+      console.log('Refreshing recruiters data...')
+      await refreshRecruiters()
+      
+      // Get the fresh data from API and notify all components
+      const apiResponse = await fetch('/api/recruiters')
+      let freshRecruiters = []
+      if (apiResponse.ok) {
+        freshRecruiters = await apiResponse.json()
+        console.log('Fresh recruiters loaded:', freshRecruiters.length)
+        
+        // Dispatch events to update all components
+        console.log('Dispatching update events...')
+        window.dispatchEvent(new CustomEvent('recruitersUpdated', {
+          detail: { recruiters: freshRecruiters }
+        }))
+      }
+      
+      // Force homepage refresh
       window.dispatchEvent(new CustomEvent('refreshTools'))
+      
+      // Trigger storage event for cross-tab updates
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('recruiters_data', JSON.stringify(freshRecruiters))
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'recruiters_data',
+          newValue: JSON.stringify(freshRecruiters),
+          oldValue: null,
+          storageArea: localStorage,
+          url: window.location.href
+        }))
+      }
+      
+      alert('Recruiter profile updated successfully!')
       
     } catch (error) {
       console.error('Error updating recruiter:', error)
@@ -377,9 +431,9 @@ export default function EditRecruitersPage() {
           </div>
         </motion.div>
 
-        {/* Search */}
-        <motion.div className="mb-8" variants={itemVariants}>
-          <div className="relative max-w-md">
+        {/* Search and Controls */}
+        <motion.div className="mb-8 flex items-center gap-4" variants={itemVariants}>
+          <div className="relative max-w-md flex-1">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <Input
               type="text"
@@ -389,6 +443,18 @@ export default function EditRecruitersPage() {
               className="pl-12 pr-4 py-3 w-full border-gray-300 rounded-xl focus:border-orange-600 focus:ring-orange-600 text-base"
             />
           </div>
+          <Button
+            onClick={refreshRecruiters}
+            disabled={loading}
+            variant="outline"
+            className="px-4 py-3 border-gray-300 hover:border-orange-600 hover:text-orange-600"
+          >
+            {loading ? (
+              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              '↻'
+            )}
+          </Button>
         </motion.div>
 
         {/* Recruiters List */}

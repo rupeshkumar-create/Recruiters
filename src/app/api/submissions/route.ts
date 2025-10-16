@@ -1,31 +1,78 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { emailService } from '@/lib/email';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { RecruiterStorage } from '@/lib/recruiterStorage';
+import { writeFile, readFile, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
-// In-memory storage for submissions (fallback when Supabase is not available)
-let submissions: any[] = [];
+// File-based storage for submissions (fallback when Supabase is not available)
+const SUBMISSIONS_FILE = join(process.cwd(), 'data', 'submissions.json');
+
+// Ensure data directory exists
+async function ensureDataDirectory() {
+  const dataDir = join(process.cwd(), 'data');
+  if (!existsSync(dataDir)) {
+    await mkdir(dataDir, { recursive: true });
+  }
+}
+
+// Load submissions from file
+async function loadSubmissions(): Promise<any[]> {
+  try {
+    await ensureDataDirectory();
+    if (existsSync(SUBMISSIONS_FILE)) {
+      const data = await readFile(SUBMISSIONS_FILE, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Error loading submissions from file:', error);
+  }
+  return [];
+}
+
+// Save submissions to file
+async function saveSubmissions(submissions: any[]): Promise<void> {
+  try {
+    await ensureDataDirectory();
+    await writeFile(SUBMISSIONS_FILE, JSON.stringify(submissions, null, 2));
+  } catch (error) {
+    console.error('Error saving submissions to file:', error);
+  }
+}
 
 // GET /api/submissions - Get all submissions
 export async function GET() {
   try {
     // Try Supabase first
-    if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY && 
+        process.env.NEXT_PUBLIC_SUPABASE_URL && 
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase')) {
       const { data, error } = await supabaseAdmin
         .from('submissions')
         .select('*')
+        .neq('status', 'approved') // Exclude approved submissions
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Supabase error:', error);
-        // Fall back to in-memory storage
-        return NextResponse.json(submissions);
+        // Fall back to file storage
+        const fileSubmissions = await loadSubmissions();
+        // Filter out approved submissions
+        const pendingSubmissions = fileSubmissions.filter(s => s.status !== 'approved');
+        return NextResponse.json(pendingSubmissions);
       }
 
-      return NextResponse.json(data || []);
+      // Filter out approved submissions from Supabase data too
+      const pendingData = (data || []).filter((s: any) => s.status !== 'approved');
+      return NextResponse.json(pendingData);
     }
 
-    // Fallback to in-memory storage
-    return NextResponse.json(submissions);
+    // Fallback to file-based storage
+    const fileSubmissions = await loadSubmissions();
+    // Filter out approved submissions - they should only appear in the edit section
+    const pendingSubmissions = fileSubmissions.filter(s => s.status !== 'approved');
+    return NextResponse.json(pendingSubmissions);
   } catch (error) {
     console.error('Error in GET /api/submissions:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -137,7 +184,9 @@ export async function POST(request: NextRequest) {
     let submission;
 
     // Try Supabase first
-    if (supabase && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    if (supabase && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && 
+        process.env.NEXT_PUBLIC_SUPABASE_URL && 
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase')) {
       const { data, error } = await supabase
         .from('submissions')
         .insert([submissionData])
@@ -146,26 +195,32 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('Supabase error:', error);
-        // Fall back to in-memory storage
+        // Fall back to file storage
         submission = {
           id: Date.now().toString(),
           ...submissionData,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
-        submissions.push(submission);
+        
+        const currentSubmissions = await loadSubmissions();
+        currentSubmissions.push(submission);
+        await saveSubmissions(currentSubmissions);
       } else {
         submission = data;
       }
     } else {
-      // Fallback to in-memory storage
+      // Fallback to file-based storage
       submission = {
         id: Date.now().toString(),
         ...submissionData,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-      submissions.push(submission);
+      
+      const currentSubmissions = await loadSubmissions();
+      currentSubmissions.push(submission);
+      await saveSubmissions(currentSubmissions);
     }
 
     console.log('Recruiter profile submission received:', {
@@ -212,7 +267,9 @@ export async function PUT(request: NextRequest) {
       let submission;
 
       // Try Supabase first
-      if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY && 
+          process.env.NEXT_PUBLIC_SUPABASE_URL && 
+          !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase')) {
         const { data, error } = await supabaseAdmin
           .from('submissions')
           .update({ status: 'approved' })
@@ -222,127 +279,195 @@ export async function PUT(request: NextRequest) {
 
         if (error) {
           console.error('Supabase error:', error);
-          // Fall back to in-memory storage
-          const submissionIndex = submissions.findIndex(s => s.id === id);
+          // Fall back to file storage
+          const currentSubmissions = await loadSubmissions();
+          const submissionIndex = currentSubmissions.findIndex(s => s.id === id);
           if (submissionIndex === -1) {
             return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
           }
-          submission = submissions[submissionIndex];
-          submissions[submissionIndex] = {
+          submission = currentSubmissions[submissionIndex];
+          currentSubmissions[submissionIndex] = {
             ...submission,
             status: 'approved',
             updated_at: new Date().toISOString()
           };
+          await saveSubmissions(currentSubmissions);
         } else {
           submission = data;
         }
       } else {
-        // Fallback to in-memory storage
-        const submissionIndex = submissions.findIndex(s => s.id === id);
+        // Fallback to file-based storage
+        const currentSubmissions = await loadSubmissions();
+        const submissionIndex = currentSubmissions.findIndex(s => s.id === id);
         if (submissionIndex === -1) {
           return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
         }
-        submission = submissions[submissionIndex];
-        submissions[submissionIndex] = {
+        submission = currentSubmissions[submissionIndex];
+        currentSubmissions[submissionIndex] = {
           ...submission,
           status: 'approved',
           updated_at: new Date().toISOString()
         };
+        await saveSubmissions(currentSubmissions);
       }
 
       console.log('Submission approved:', id);
 
       // Add approved recruiter to the main recruiters list
       try {
-        const { RecruiterStorage } = await import('@/lib/recruiterStorage');
+        // Check if recruiter already exists in directory
+        const existingRecruiters = await RecruiterStorage.getAll();
+        const existingRecruiter = existingRecruiters.find(r => r.id === submission.id);
         
-        // Generate slug
+        if (existingRecruiter) {
+          console.log('Recruiter already exists in directory:', submission.name);
+        } else {
+          // Generate slug
+          const slug = submission.name.toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, '')
+            .substring(0, 50);
+
+          // Create recruiter object from submission
+          const newRecruiter = {
+            id: submission.id,
+            name: submission.name,
+            jobTitle: submission.job_title,
+            company: submission.company,
+            email: submission.email,
+            phone: submission.phone,
+            linkedin: submission.linkedin,
+            website: submission.website || '',
+            specialization: submission.specialization,
+            experience: submission.experience,
+            location: submission.location,
+            remoteAvailable: submission.remote_available || false,
+            bio: submission.bio,
+            avatar: submission.avatar,
+            slug: slug,
+            featured: false,
+            hidden: false, // Make visible on homepage
+            approved: true,
+            status: 'approved' as const,
+            submitterEmail: submission.submitter_email,
+            
+            // Performance metrics
+            rating: 0,
+            reviewCount: 0,
+            placements: submission.placements || 0,
+            avgTimeToHire: submission.avg_time_to_hire || 30,
+            candidateSatisfaction: submission.candidate_satisfaction || 90,
+            clientRetention: submission.client_retention || 85,
+            
+            // Professional details (parse JSON if stored as string)
+            achievements: typeof submission.achievements === 'string' 
+              ? JSON.parse(submission.achievements) 
+              : submission.achievements || [],
+            workExperience: typeof submission.work_experience === 'string'
+              ? JSON.parse(submission.work_experience)
+              : submission.work_experience || [],
+            rolesPlaced: typeof submission.roles_placed === 'string'
+              ? JSON.parse(submission.roles_placed)
+              : submission.roles_placed || [],
+            industries: typeof submission.industries === 'string'
+              ? JSON.parse(submission.industries)
+              : submission.industries || [],
+            keywords: typeof submission.keywords === 'string'
+              ? JSON.parse(submission.keywords)
+              : submission.keywords || [],
+            languages: typeof submission.languages === 'string'
+              ? JSON.parse(submission.languages)
+              : submission.languages || [],
+            seniorityLevels: typeof submission.seniority_levels === 'string'
+              ? JSON.parse(submission.seniority_levels)
+              : submission.seniority_levels || [],
+            employmentTypes: typeof submission.employment_types === 'string'
+              ? JSON.parse(submission.employment_types)
+              : submission.employment_types || [],
+            regions: typeof submission.regions === 'string'
+              ? JSON.parse(submission.regions)
+              : submission.regions || [],
+            certifications: typeof submission.certifications === 'string'
+              ? JSON.parse(submission.certifications)
+              : submission.certifications || [],
+            
+            // Optional fields
+            availability: typeof submission.availability === 'string'
+              ? JSON.parse(submission.availability)
+              : submission.availability || { accepting: true, nextAvailable: '' },
+            socialProof: typeof submission.social_proof === 'string'
+              ? JSON.parse(submission.social_proof)
+              : submission.social_proof || { linkedinFollowers: 0, featuredIn: [] },
+            testimonials: [],
+            
+            created_at: submission.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+
+          // Add to recruiters storage directly
+          try {
+            const { writeFile, readFile, mkdir } = await import('fs/promises');
+            const { existsSync } = await import('fs');
+            const { join } = await import('path');
+            
+            const RECRUITERS_FILE = join(process.cwd(), 'data', 'recruiters.json');
+            const dataDir = join(process.cwd(), 'data');
+            
+            // Ensure data directory exists
+            if (!existsSync(dataDir)) {
+              await mkdir(dataDir, { recursive: true });
+            }
+            
+            // Load current recruiters
+            let currentRecruiters = [];
+            if (existsSync(RECRUITERS_FILE)) {
+              const data = await readFile(RECRUITERS_FILE, 'utf-8');
+              currentRecruiters = JSON.parse(data);
+            } else {
+              // Initialize with default data if file doesn't exist
+              const { csvRecruiters } = await import('@/lib/data');
+              currentRecruiters = csvRecruiters;
+            }
+            
+            // Check if recruiter already exists
+            const existingIndex = currentRecruiters.findIndex((r: any) => r.id === newRecruiter.id);
+            
+            if (existingIndex >= 0) {
+              // Update existing recruiter
+              currentRecruiters[existingIndex] = newRecruiter;
+            } else {
+              // Add new recruiter
+              currentRecruiters.push(newRecruiter);
+            }
+            
+            // Save updated list
+            await writeFile(RECRUITERS_FILE, JSON.stringify(currentRecruiters, null, 2));
+            console.log('Recruiter added to main directory:', newRecruiter.name);
+            
+          } catch (fileError) {
+            console.error('Failed to add recruiter to file storage:', fileError);
+            // Fallback to RecruiterStorage
+            try {
+              await RecruiterStorage.addRecruiter(newRecruiter);
+              console.log('Recruiter added via RecruiterStorage fallback:', newRecruiter.name);
+            } catch (storageError) {
+              console.error('Failed to add recruiter via RecruiterStorage:', storageError);
+            }
+          }
+        }
+
+        // Trigger homepage refresh by dispatching event (if in browser context)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('recruitersUpdated', {
+            detail: { recruiters: await RecruiterStorage.getAll() }
+          }));
+        }
+
+        // Send approval email to the recruiter
         const slug = submission.name.toLowerCase()
           .replace(/\s+/g, '-')
           .replace(/[^a-z0-9-]/g, '')
           .substring(0, 50);
-
-        // Create recruiter object from submission
-        const newRecruiter = {
-          id: submission.id,
-          name: submission.name,
-          jobTitle: submission.job_title,
-          company: submission.company,
-          email: submission.email,
-          phone: submission.phone,
-          linkedin: submission.linkedin,
-          website: submission.website || '',
-          specialization: submission.specialization,
-          experience: submission.experience,
-          location: submission.location,
-          remoteAvailable: submission.remote_available || false,
-          bio: submission.bio,
-          avatar: submission.avatar,
-          slug: slug,
-          featured: false,
-          hidden: false, // Make visible on homepage
-          approved: true,
-          status: 'approved' as const,
-          submitterEmail: submission.submitter_email,
-          
-          // Performance metrics
-          rating: 0,
-          reviewCount: 0,
-          placements: submission.placements || 0,
-          avgTimeToHire: submission.avg_time_to_hire || 30,
-          candidateSatisfaction: submission.candidate_satisfaction || 90,
-          clientRetention: submission.client_retention || 85,
-          
-          // Professional details (parse JSON if stored as string)
-          achievements: typeof submission.achievements === 'string' 
-            ? JSON.parse(submission.achievements) 
-            : submission.achievements || [],
-          workExperience: typeof submission.work_experience === 'string'
-            ? JSON.parse(submission.work_experience)
-            : submission.work_experience || [],
-          rolesPlaced: typeof submission.roles_placed === 'string'
-            ? JSON.parse(submission.roles_placed)
-            : submission.roles_placed || [],
-          industries: typeof submission.industries === 'string'
-            ? JSON.parse(submission.industries)
-            : submission.industries || [],
-          keywords: typeof submission.keywords === 'string'
-            ? JSON.parse(submission.keywords)
-            : submission.keywords || [],
-          languages: typeof submission.languages === 'string'
-            ? JSON.parse(submission.languages)
-            : submission.languages || [],
-          seniorityLevels: typeof submission.seniority_levels === 'string'
-            ? JSON.parse(submission.seniority_levels)
-            : submission.seniority_levels || [],
-          employmentTypes: typeof submission.employment_types === 'string'
-            ? JSON.parse(submission.employment_types)
-            : submission.employment_types || [],
-          regions: typeof submission.regions === 'string'
-            ? JSON.parse(submission.regions)
-            : submission.regions || [],
-          certifications: typeof submission.certifications === 'string'
-            ? JSON.parse(submission.certifications)
-            : submission.certifications || [],
-          
-          // Optional fields
-          availability: typeof submission.availability === 'string'
-            ? JSON.parse(submission.availability)
-            : submission.availability || { accepting: true, nextAvailable: '' },
-          socialProof: typeof submission.social_proof === 'string'
-            ? JSON.parse(submission.social_proof)
-            : submission.social_proof || { linkedinFollowers: 0, featuredIn: [] },
-          testimonials: [],
-          
-          created_at: submission.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        // Add to recruiters storage
-        await RecruiterStorage.addRecruiter(newRecruiter);
-        console.log('Recruiter added to main directory:', newRecruiter.name);
-
-        // Send approval email to the recruiter
         const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/tool/${slug}`;
         await emailService.sendApprovalNotification({
           name: submission.name,
@@ -353,13 +478,18 @@ export async function PUT(request: NextRequest) {
 
       } catch (error) {
         console.error('Failed to add recruiter to directory or send email:', error);
-        // Don't fail the approval if this fails
+        console.error('Error details:', error instanceof Error ? error.stack : error);
+        // Log the submission data for debugging
+        console.log('Submission data:', JSON.stringify(submission, null, 2));
+        // Don't fail the approval if this fails, but log it clearly
       }
 
       return NextResponse.json({ message: 'Submission approved successfully' });
     } else if (action === 'reject') {
       // Try Supabase first
-      if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY && 
+          process.env.NEXT_PUBLIC_SUPABASE_URL && 
+          !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase')) {
         const { error } = await supabaseAdmin
           .from('submissions')
           .update({ status: 'rejected' })
@@ -367,28 +497,32 @@ export async function PUT(request: NextRequest) {
 
         if (error) {
           console.error('Supabase error:', error);
-          // Fall back to in-memory storage
-          const submissionIndex = submissions.findIndex(s => s.id === id);
+          // Fall back to file storage
+          const currentSubmissions = await loadSubmissions();
+          const submissionIndex = currentSubmissions.findIndex(s => s.id === id);
           if (submissionIndex === -1) {
             return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
           }
-          submissions[submissionIndex] = {
-            ...submissions[submissionIndex],
+          currentSubmissions[submissionIndex] = {
+            ...currentSubmissions[submissionIndex],
             status: 'rejected',
             updated_at: new Date().toISOString()
           };
+          await saveSubmissions(currentSubmissions);
         }
       } else {
-        // Fallback to in-memory storage
-        const submissionIndex = submissions.findIndex(s => s.id === id);
+        // Fallback to file-based storage
+        const currentSubmissions = await loadSubmissions();
+        const submissionIndex = currentSubmissions.findIndex(s => s.id === id);
         if (submissionIndex === -1) {
           return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
         }
-        submissions[submissionIndex] = {
-          ...submissions[submissionIndex],
+        currentSubmissions[submissionIndex] = {
+          ...currentSubmissions[submissionIndex],
           status: 'rejected',
           updated_at: new Date().toISOString()
         };
+        await saveSubmissions(currentSubmissions);
       }
 
       console.log('Submission rejected:', id);
@@ -413,7 +547,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Try Supabase first
-    if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY && 
+        process.env.NEXT_PUBLIC_SUPABASE_URL && 
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase')) {
       const { error } = await supabaseAdmin
         .from('submissions')
         .delete()
@@ -421,20 +557,24 @@ export async function DELETE(request: NextRequest) {
 
       if (error) {
         console.error('Supabase error:', error);
-        // Fall back to in-memory storage
-        const submissionIndex = submissions.findIndex(s => s.id === id);
+        // Fall back to file storage
+        const currentSubmissions = await loadSubmissions();
+        const submissionIndex = currentSubmissions.findIndex(s => s.id === id);
         if (submissionIndex === -1) {
           return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
         }
-        submissions.splice(submissionIndex, 1);
+        currentSubmissions.splice(submissionIndex, 1);
+        await saveSubmissions(currentSubmissions);
       }
     } else {
-      // Fallback to in-memory storage
-      const submissionIndex = submissions.findIndex(s => s.id === id);
+      // Fallback to file-based storage
+      const currentSubmissions = await loadSubmissions();
+      const submissionIndex = currentSubmissions.findIndex(s => s.id === id);
       if (submissionIndex === -1) {
         return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
       }
-      submissions.splice(submissionIndex, 1);
+      currentSubmissions.splice(submissionIndex, 1);
+      await saveSubmissions(currentSubmissions);
     }
 
     console.log('Submission deleted:', id);

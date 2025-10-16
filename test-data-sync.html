@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Data Sync</title>
+</head>
+<body>
+    <h1>Admin Data Sync Test</h1>
+    <div id="status"></div>
+    <button onclick="testDataSync()">Test Data Sync</button>
+    <button onclick="checkLocalStorage()">Check localStorage</button>
+    <button onclick="forceRefresh()">Force Refresh</button>
+    
+    <script>
+        function updateStatus(message) {
+            document.getElementById('status').innerHTML += '<p>' + message + '</p>';
+            console.log(message);
+        }
+        
+        function testDataSync() {
+            updateStatus('🧪 Testing data sync...');
+            
+            // Test 1: Check if localStorage exists
+            if (typeof localStorage !== 'undefined') {
+                updateStatus('✅ localStorage available');
+                
+                // Test 2: Check if recruiters data exists
+                const data = localStorage.getItem('recruiters_data');
+                if (data) {
+                    try {
+                        const recruiters = JSON.parse(data);
+                        updateStatus(`✅ Found ${recruiters.length} recruiters in localStorage`);
+                        
+                        // Test 3: Find Sarah Johnson/Mike
+                        const sarah = recruiters.find(r => r.name.toLowerCase().includes('sarah'));
+                        if (sarah) {
+                            updateStatus(`✅ Found Sarah: ${sarah.name} at ${sarah.company}`);
+                        } else {
+                            updateStatus('❌ Sarah not found in data');
+                        }
+                    } catch (error) {
+                        updateStatus('❌ Error parsing localStorage data: ' + error.message);
+                    }
+                } else {
+                    updateStatus('❌ No recruiters data in localStorage');
+                }
+            } else {
+                updateStatus('❌ localStorage not available');
+            }
+            
+            // Test 4: Test event dispatching
+            updateStatus('🔄 Testing event dispatch...');
+            window.dispatchEvent(new CustomEvent('recruitersUpdated', {
+                detail: { recruiters: JSON.parse(localStorage.getItem('recruiters_data') || '[]') }
+            }));
+            updateStatus('✅ Event dispatched');
+        }
+        
+        function checkLocalStorage() {
+            const data = localStorage.getItem('recruiters_data');
+            if (data) {
+                const recruiters = JSON.parse(data);
+                updateStatus(`📊 localStorage has ${recruiters.length} recruiters`);
+                recruiters.forEach((r, i) => {
+                    if (i < 5) { // Show first 5
+                        updateStatus(`   ${i+1}. ${r.name} - ${r.company}`);
+                    }
+                });
+            } else {
+                updateStatus('❌ No data in localStorage');
+            }
+        }
+        
+        function forceRefresh() {
+            updateStatus('🔄 Forcing refresh...');
+            window.dispatchEvent(new CustomEvent('refreshTools'));
+            window.location.reload();
+        }
+        
+        // Listen for events
+        window.addEventListener('recruitersUpdated', (event) => {
+            updateStatus('🎉 Received recruitersUpdated event with ' + event.detail.recruiters.length + ' recruiters');
+        });
+        
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'recruiters_data') {
+                updateStatus('🔄 Storage event received');
+            }
+        });
+        
+        updateStatus('🚀 Test page loaded. Click buttons to test functionality.');
+    </script>
+</body>
+</html>

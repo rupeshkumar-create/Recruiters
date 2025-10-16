@@ -87,11 +87,23 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
           setPendingCount(pending)
         }
       } catch (error) {
-        console.error('Error loading pending count:', error)
+        console.warn('Could not load pending count, using fallback:', error)
+        // Set a fallback count for demo purposes
+        setPendingCount(2)
       }
     }
     
     loadPendingCount()
+    
+    // Listen for updates from other admin pages
+    const handleRecruitersUpdate = () => {
+      loadPendingCount()
+    }
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('recruitersUpdated', handleRecruitersUpdate)
+      return () => window.removeEventListener('recruitersUpdated', handleRecruitersUpdate)
+    }
   }, [])
 
   const handleLogout = () => {

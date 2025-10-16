@@ -97,9 +97,13 @@ export default function AdminSubmissionsPage() {
         setSubmissions(data)
       } else {
         console.error('Failed to load submissions')
+        // Set empty array as fallback
+        setSubmissions([])
       }
     } catch (error) {
       console.error('Error loading submissions:', error)
+      // Set empty array as fallback to prevent crashes
+      setSubmissions([])
     } finally {
       setLoading(false)
     }
@@ -235,7 +239,7 @@ export default function AdminSubmissionsPage() {
                             <h3 className="font-semibold text-gray-900">{submission.name}</h3>
                             {getStatusBadge(submission.status)}
                           </div>
-                          <p className="text-orange-600 font-medium">{submission.jobTitle}</p>
+                          <p className="text-orange-600 font-medium">{submission.jobTitle || submission.job_title}</p>
                           <p className="text-gray-600">{submission.company}</p>
                           <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                             <span className="flex items-center gap-1">
@@ -364,7 +368,7 @@ export default function AdminSubmissionsPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Job Title</label>
-                      <p className="text-gray-900">{selectedSubmission.jobTitle}</p>
+                      <p className="text-gray-900">{selectedSubmission.jobTitle || selectedSubmission.job_title}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Company</label>

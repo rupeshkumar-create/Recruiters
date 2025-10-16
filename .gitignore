@@ -91,6 +91,10 @@ temp/
 public/uploads/*
 !public/uploads/.gitkeep
 
+# Data storage
+data/
+!data/.gitkeep
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

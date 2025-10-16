@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import Navigation from '../../../components/Navigation'
 import TestimonialForm from '../../../components/TestimonialForm'
 import { useState, useEffect } from 'react'
-import { csvRecruiters, Recruiter } from '../../../lib/data'
+import { Recruiter } from '../../../lib/data'
+import { RecruiterStorage } from '../../../lib/recruiterStorage'
 
 interface RecruiterPageProps {
   params: {
@@ -23,31 +24,39 @@ export default function RecruiterProfile({ params }: RecruiterPageProps) {
   const [shareMessage, setShareMessage] = useState('')
   const [similarRecruiters, setSimilarRecruiters] = useState<Recruiter[]>([])
 
-  useEffect(() => {
+  const loadRecruiterData = async () => {
     try {
+      setLoading(true)
       console.log('Looking for recruiter with slug:', params.slug)
-      console.log('Available recruiters:', csvRecruiters.length)
+      
+      // Get all recruiters from storage
+      const allRecruiters = await RecruiterStorage.getAll()
+      console.log('Available recruiters:', allRecruiters.length)
       
       // Find recruiter by slug
-      const foundRecruiter = csvRecruiters.find(r => r.slug === params.slug)
+      const foundRecruiter = allRecruiters.find(r => r.slug === params.slug)
       console.log('Found recruiter:', foundRecruiter)
       
       if (foundRecruiter) {
         setRecruiter(foundRecruiter)
         
         // Find similar recruiters (same specialization, excluding current)
-        const similar = csvRecruiters
+        const similar = allRecruiters
           .filter(r => 
             r.id !== foundRecruiter.id && 
-            r.specialization === foundRecruiter.specialization
+            r.specialization === foundRecruiter.specialization &&
+            !r.hidden &&
+            r.status === 'approved'
           )
           .slice(0, 5)
         
         // If not enough similar, add random ones
         if (similar.length < 5) {
-          const additional = csvRecruiters
+          const additional = allRecruiters
             .filter(r => 
               r.id !== foundRecruiter.id && 
+              !r.hidden &&
+              r.status === 'approved' &&
               !similar.find(s => s.id === r.id)
             )
             .slice(0, 5 - similar.length)
@@ -57,9 +66,34 @@ export default function RecruiterProfile({ params }: RecruiterPageProps) {
         setSimilarRecruiters(similar)
       }
     } catch (error) {
-      console.error('Error in useEffect:', error)
+      console.error('Error loading recruiter data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadRecruiterData()
+    
+    // Listen for recruiter updates from admin panel
+    const handleRecruitersUpdated = () => {
+      console.log('Recruiters updated, refreshing profile page...')
+      loadRecruiterData()
+    }
+    
+    // Listen for storage updates
+    const handleStorageUpdate = () => {
+      loadRecruiterData()
+    }
+    
+    window.addEventListener('recruitersUpdated', handleRecruitersUpdated)
+    window.addEventListener('storage', handleStorageUpdate)
+    window.addEventListener('refreshTools', handleRecruitersUpdated)
+    
+    return () => {
+      window.removeEventListener('recruitersUpdated', handleRecruitersUpdated)
+      window.removeEventListener('storage', handleStorageUpdate)
+      window.removeEventListener('refreshTools', handleRecruitersUpdated)
     }
   }, [params.slug])
 

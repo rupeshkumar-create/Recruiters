@@ -77,6 +77,7 @@ export class RecruiterStorage {
     // Initialize localStorage with default data if empty
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(csvRecruiters))
+      console.log('Initialized localStorage with default data:', csvRecruiters.length, 'recruiters')
     } catch (error) {
       console.error('Error saving to localStorage:', error)
     }
@@ -124,51 +125,17 @@ export class RecruiterStorage {
 
   // Update a specific recruiter
   static async updateRecruiter(id: string, updates: Partial<Recruiter>): Promise<Recruiter | null> {
-    // Check if Supabase is available
-    const isSupabaseAvailable = supabase && typeof supabase.from === 'function'
+    console.log('RecruiterStorage.updateRecruiter called with:', { id, updates })
     
-    if (isSupabaseAvailable) {
-      try {
-        // Transform updates for Supabase
-        const supabaseUpdates = this.transformToSupabase({ id, ...updates } as Recruiter)
-        
-        // Update in Supabase
-        const { data, error } = await supabase
-          .from('recruiters')
-          .update(supabaseUpdates)
-          .eq('id', id)
-          .select()
-          .single()
-
-        if (error) {
-          console.error('Error updating in Supabase:', error)
-          throw error
-        }
-
-        if (data) {
-          const updatedRecruiter = this.transformFromSupabase(data)
-          
-          // Update localStorage cache
-          const recruiters = this.getAllSync()
-          const index = recruiters.findIndex(r => r.id === id)
-          if (index !== -1) {
-            recruiters[index] = updatedRecruiter
-            if (typeof window !== 'undefined') {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(recruiters))
-              window.dispatchEvent(new CustomEvent('recruitersUpdated', { 
-                detail: { recruiters } 
-              }))
-            }
-          }
-          
-          return updatedRecruiter
-        }
-      } catch (error) {
-        console.error('Supabase update failed:', error)
-      }
+    // If name is being updated, also update the slug
+    if (updates.name) {
+      updates.slug = updates.name.toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .substring(0, 50)
     }
-
-    // Fallback to localStorage update
+    
+    // Always update localStorage first to ensure immediate UI updates
     const recruiters = this.getAllSync()
     const index = recruiters.findIndex(r => r.id === id)
     
@@ -180,14 +147,60 @@ export class RecruiterStorage {
     const updatedRecruiter = { ...recruiters[index], ...updates }
     recruiters[index] = updatedRecruiter
     
+    // Save to localStorage immediately
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(recruiters))
+      console.log('Updated localStorage with new data')
+    }
+    
+    // Check if Supabase is available and try to update there too
+    const isSupabaseAvailable = supabase && typeof supabase.from === 'function' && 
+                                process.env.NEXT_PUBLIC_SUPABASE_URL && 
+                                !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase')
+    
+    if (isSupabaseAvailable) {
+      try {
+        console.log('Attempting Supabase update...')
+        // Transform updates for Supabase
+        const supabaseUpdates = this.transformToSupabase(updatedRecruiter)
+        
+        // Update in Supabase
+        const { data, error } = await supabase
+          .from('recruiters')
+          .update(supabaseUpdates)
+          .eq('id', id)
+          .select()
+          .single()
+
+        if (error) {
+          console.error('Error updating in Supabase:', error)
+          // Don't throw error, continue with localStorage version
+        } else if (data) {
+          console.log('Successfully updated in Supabase')
+          const supabaseRecruiter = this.transformFromSupabase(data)
+          
+          // Update localStorage with Supabase data
+          recruiters[index] = supabaseRecruiter
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(recruiters))
+          }
+        }
+      } catch (error) {
+        console.error('Supabase update failed, using localStorage version:', error)
+      }
+    } else {
+      console.log('Supabase not available, using localStorage only')
+    }
+    
+    // Dispatch update event
+    if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('recruitersUpdated', { 
         detail: { recruiters } 
       }))
+      console.log('Dispatched recruitersUpdated event')
     }
     
-    return updatedRecruiter
+    return recruiters[index]
   }
 
   // Get a specific recruiter by ID
@@ -365,5 +378,10 @@ export class RecruiterStorage {
 
 // Initialize on module load (client-side only)
 if (typeof window !== 'undefined') {
-  RecruiterStorage.initialize()
+  // Use setTimeout to avoid blocking the main thread
+  setTimeout(() => {
+    RecruiterStorage.initialize().catch(error => {
+      console.error('Failed to initialize RecruiterStorage:', error)
+    })
+  }, 0)
 }

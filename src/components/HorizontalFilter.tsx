@@ -1,11 +1,8 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createPortal } from 'react-dom'
-import { ChevronRight, Filter, X, MapPin, Star, Calendar, Briefcase, Users, Globe, Award, Building, ChevronDown } from 'lucide-react'
-import { Button } from './ui/button'
-import { Badge } from './ui/badge'
+import { ChevronRight, MapPin, Star, Calendar, Briefcase, Globe, Award, Building } from 'lucide-react'
 
 interface HorizontalFilterProps {
   categories: string[]
@@ -37,6 +34,8 @@ export default function HorizontalFilter({
 }: HorizontalFilterProps) {
   
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+  
   const filters = additionalFilters || {
     locations: [],
     experienceLevels: [],
@@ -46,25 +45,16 @@ export default function HorizontalFilter({
     companies: []
   }
 
-  const [activeFilterType, setActiveFilterType] = useState<string>('specializations')
-  const [showAllFiltersDropdown, setShowAllFiltersDropdown] = useState(false)
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 })
-  const buttonRef = useRef<HTMLButtonElement>(null)
+  // Handle client-side hydration
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+
 
   // Extract unique values from tools for filter options
   const getUniqueLocations = () => {
-    // Get from admin-managed filter options if available
-    const savedOptions = localStorage.getItem('admin_filter_options')
-    if (savedOptions) {
-      const options = JSON.parse(savedOptions)
-      const locations = options
-        .filter((o: any) => o.type === 'location' && o.visible)
-        .sort((a: any, b: any) => a.order - b.order)
-        .map((o: any) => o.name)
-      return locations
-    }
-    
-    // Fallback to data-based locations (convert to countries)
+    // Always use data-based locations during SSR to ensure consistency
     const locations = tools
       .filter(tool => !tool.hidden && tool.location)
       .map(tool => {
@@ -75,7 +65,28 @@ export default function HorizontalFilter({
         }
         return location
       })
-    return Array.from(new Set(locations)).sort()
+    const dataBasedLocations = Array.from(new Set(locations)).sort()
+    
+    // Only use admin-managed options on client-side after hydration
+    if (isClient) {
+      const savedOptions = localStorage.getItem('admin_filter_options')
+      if (savedOptions) {
+        try {
+          const options = JSON.parse(savedOptions)
+          const adminLocations = options
+            .filter((o: any) => o.type === 'location' && o.visible)
+            .sort((a: any, b: any) => a.order - b.order)
+            .map((o: any) => o.name)
+          if (adminLocations.length > 0) {
+            return adminLocations
+          }
+        } catch (error) {
+          console.error('Error parsing admin filter options:', error)
+        }
+      }
+    }
+    
+    return dataBasedLocations
   }
 
   const getUniqueExperienceLevels = () => {
@@ -97,18 +108,7 @@ export default function HorizontalFilter({
   }
 
   const getUniqueBadges = () => {
-    // Get from admin-managed filter options if available
-    const savedOptions = localStorage.getItem('admin_filter_options')
-    if (savedOptions) {
-      const options = JSON.parse(savedOptions)
-      const badges = options
-        .filter((o: any) => o.type === 'badge' && o.visible)
-        .sort((a: any, b: any) => a.order - b.order)
-        .map((o: any) => o.name)
-      return badges
-    }
-    
-    // Fallback to data-based badges
+    // Always use data-based badges during SSR to ensure consistency
     const badges = tools
       .filter(tool => !tool.hidden && tool.badge)
       .map(tool => {
@@ -120,7 +120,28 @@ export default function HorizontalFilter({
           default: return badge
         }
       })
-    return Array.from(new Set(badges)).sort()
+    const dataBasedBadges = Array.from(new Set(badges)).sort()
+    
+    // Only use admin-managed options on client-side after hydration
+    if (isClient) {
+      const savedOptions = localStorage.getItem('admin_filter_options')
+      if (savedOptions) {
+        try {
+          const options = JSON.parse(savedOptions)
+          const adminBadges = options
+            .filter((o: any) => o.type === 'badge' && o.visible)
+            .sort((a: any, b: any) => a.order - b.order)
+            .map((o: any) => o.name)
+          if (adminBadges.length > 0) {
+            return adminBadges
+          }
+        } catch (error) {
+          console.error('Error parsing admin filter options:', error)
+        }
+      }
+    }
+    
+    return dataBasedBadges
   }
 
   const getUniqueCompanies = () => {
@@ -131,22 +152,32 @@ export default function HorizontalFilter({
   }
 
   const getUniqueSpecializations = () => {
-    // Get from admin-managed filter options if available
-    const savedOptions = localStorage.getItem('admin_filter_options')
-    if (savedOptions) {
-      const options = JSON.parse(savedOptions)
-      const specializations = options
-        .filter((o: any) => o.type === 'specialization' && o.visible)
-        .sort((a: any, b: any) => a.order - b.order)
-        .map((o: any) => o.name)
-      return specializations
-    }
-    
-    // Fallback to data-based specializations
+    // Always use data-based specializations during SSR to ensure consistency
     const specializations = tools
       .filter(tool => !tool.hidden && tool.specialization)
       .map(tool => tool.specialization)
-    return Array.from(new Set(specializations)).sort()
+    const dataBasedSpecializations = Array.from(new Set(specializations)).sort()
+    
+    // Only use admin-managed options on client-side after hydration
+    if (isClient) {
+      const savedOptions = localStorage.getItem('admin_filter_options')
+      if (savedOptions) {
+        try {
+          const options = JSON.parse(savedOptions)
+          const adminSpecializations = options
+            .filter((o: any) => o.type === 'specialization' && o.visible)
+            .sort((a: any, b: any) => a.order - b.order)
+            .map((o: any) => o.name)
+          if (adminSpecializations.length > 0) {
+            return adminSpecializations
+          }
+        } catch (error) {
+          console.error('Error parsing admin filter options:', error)
+        }
+      }
+    }
+    
+    return dataBasedSpecializations
   }
 
   // Prevent scroll restoration on category changes
@@ -159,46 +190,18 @@ export default function HorizontalFilter({
   // Listen for filter options updates
   useEffect(() => {
     const handleFilterOptionsUpdate = () => {
-      // Force re-render by updating a dummy state
-      setActiveFilterType(prev => prev)
+      // Force re-render by updating component
+      setShowAdvancedFilters(prev => !prev)
+      setTimeout(() => setShowAdvancedFilters(prev => !prev), 0)
     }
     
-    window.addEventListener('filterOptionsUpdated', handleFilterOptionsUpdate)
-    return () => window.removeEventListener('filterOptionsUpdated', handleFilterOptionsUpdate)
-  }, [])
+    if (isClient) {
+      window.addEventListener('filterOptionsUpdated', handleFilterOptionsUpdate)
+      return () => window.removeEventListener('filterOptionsUpdated', handleFilterOptionsUpdate)
+    }
+  }, [isClient])
 
-  // Handle clicks outside dropdown to close it
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement
-      
-      // Check if click is on the backdrop or outside the dropdown
-      if (showAllFiltersDropdown) {
-        const dropdownContainer = target.closest('[data-dropdown-container]')
-        const isBackdrop = target.classList.contains('backdrop-blur-sm')
-        
-        if (!dropdownContainer || isBackdrop) {
-          setShowAllFiltersDropdown(false)
-        }
-      }
-    }
-    
-    if (showAllFiltersDropdown) {
-      document.addEventListener('mousedown', handleClickOutside)
-      // Also handle escape key
-      const handleEscape = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') {
-          setShowAllFiltersDropdown(false)
-        }
-      }
-      document.addEventListener('keydown', handleEscape)
-      
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside)
-        document.removeEventListener('keydown', handleEscape)
-      }
-    }
-  }, [showAllFiltersDropdown])
+
 
   const handleCategoryToggle = (category: string, event?: React.MouseEvent) => {
     if (event) {
@@ -215,16 +218,20 @@ export default function HorizontalFilter({
 
     let newSelected = [...selectedCategories]
     
+    // Remove 'All' if it's selected and we're selecting a specific category
     if (newSelected.includes('All')) {
       newSelected = newSelected.filter(c => c !== 'All')
     }
 
+    // Toggle the category
     if (newSelected.includes(category)) {
       newSelected = newSelected.filter(c => c !== category)
+      // If no categories are selected, default to 'All'
       if (newSelected.length === 0) {
         newSelected = ['All']
       }
     } else {
+      // Add the category (allow multiple selections)
       newSelected.push(category)
     }
 
@@ -250,9 +257,7 @@ export default function HorizontalFilter({
     onAdditionalFiltersChange(newFilters)
   }
 
-  const handleFilterTypeChange = (filterType: string) => {
-    setActiveFilterType(filterType)
-  }
+
 
   const clearAllFilters = (event?: React.MouseEvent) => {
     if (event) {
@@ -305,107 +310,28 @@ export default function HorizontalFilter({
     return getCategoryCount(cat) > 0
   })]
   
-  // Check if we should show the separate clear filter option (2 or more categories selected, excluding "All")
+  // Check if we should show the separate clear filter option (2 or more filters selected total)
   const shouldShowClearOption = (() => {
-    // If "All" is selected, don't show clear option
-    if (selectedCategories.includes('All')) {
-      return false
+    let totalFilters = 0
+    
+    // Count category filters (excluding "All")
+    if (!selectedCategories.includes('All')) {
+      totalFilters += selectedCategories.length
     }
-    // Show clear option if 2 or more specific categories are selected
-    return selectedCategories.length >= 2
+    
+    // Count additional filters
+    totalFilters += filters.locations.length
+    totalFilters += filters.experienceLevels.length
+    totalFilters += filters.ratings.length
+    totalFilters += filters.badges.length
+    totalFilters += filters.companies.length
+    if (filters.remoteAvailable !== null) totalFilters += 1
+    
+    // Show clear option if 2 or more filters are selected
+    return totalFilters >= 2
   })()
   
-  // Get filter options based on active filter type
-  const getFilterOptions = () => {
-    switch (activeFilterType) {
-      case 'specializations':
-        return getUniqueSpecializations()
-      case 'locations':
-        return getUniqueLocations()
-      case 'experience':
-        return getUniqueExperienceLevels()
-      case 'ratings':
-        return getRatingRanges()
-      case 'badges':
-        return getUniqueBadges()
-      case 'companies':
-        return getUniqueCompanies()
-      case 'remote':
-        return ['Remote Available', 'On-site Only']
-      default:
-        return []
-    }
-  }
 
-  const getFilterIcon = (filterType: string) => {
-    switch (filterType) {
-      case 'specializations': return <Briefcase className="w-4 h-4" />
-      case 'locations': return <MapPin className="w-4 h-4" />
-      case 'experience': return <Calendar className="w-4 h-4" />
-      case 'ratings': return <Star className="w-4 h-4" />
-      case 'badges': return <Award className="w-4 h-4" />
-      case 'companies': return <Building className="w-4 h-4" />
-      case 'remote': return <Globe className="w-4 h-4" />
-      default: return <Filter className="w-4 h-4" />
-    }
-  }
-
-  const getFilterLabel = (filterType: string) => {
-    switch (filterType) {
-      case 'specializations': return 'Specialization'
-      case 'locations': return 'Location'
-      case 'experience': return 'Experience'
-      case 'ratings': return 'Rating'
-      case 'badges': return 'Badge'
-      case 'companies': return 'Company'
-      case 'remote': return 'Work Type'
-      default: return filterType
-    }
-  }
-
-  const isFilterActive = (filterType: string, value: string) => {
-    switch (filterType) {
-      case 'specializations':
-        return selectedCategories.includes(value) && !selectedCategories.includes('All')
-      case 'locations':
-        return filters.locations.includes(value)
-      case 'experience':
-        return filters.experienceLevels.includes(value)
-      case 'ratings':
-        return filters.ratings.includes(value)
-      case 'badges':
-        return filters.badges.includes(value)
-      case 'companies':
-        return filters.companies.includes(value)
-      case 'remote':
-        if (value === 'Remote Available') return filters.remoteAvailable === true
-        if (value === 'On-site Only') return filters.remoteAvailable === false
-        return false
-      default:
-        return false
-    }
-  }
-
-  const handleFilterOptionClick = (filterType: string, value: string) => {
-    if (filterType === 'specializations') {
-      handleCategoryToggle(value)
-    } else if (filterType === 'remote') {
-      const remoteValue = value === 'Remote Available' ? true : false
-      handleAdvancedFilterChange('remoteAvailable', remoteValue)
-    } else {
-      handleAdvancedFilterChange(filterType as keyof FilterState, value)
-    }
-  }
-
-  const filterTypes = [
-    { key: 'specializations', label: 'Specialization', icon: <Briefcase className="w-4 h-4" /> },
-    { key: 'locations', label: 'Location', icon: <MapPin className="w-4 h-4" /> },
-    { key: 'experience', label: 'Experience', icon: <Calendar className="w-4 h-4" /> },
-    { key: 'ratings', label: 'Rating', icon: <Star className="w-4 h-4" /> },
-    { key: 'badges', label: 'Badge', icon: <Award className="w-4 h-4" /> },
-    { key: 'companies', label: 'Company', icon: <Building className="w-4 h-4" /> },
-    { key: 'remote', label: 'Work Type', icon: <Globe className="w-4 h-4" /> }
-  ]
 
   return (
     <div className={`${isHeroVersion ? '' : 'bg-white border-b border-gray-200 sticky top-16 z-30'} ${className}`}>
@@ -416,7 +342,7 @@ export default function HorizontalFilter({
           <motion.div 
             className="relative"
             animate={{ 
-              width: getActiveFiltersCount() > 0 ? 'calc(100% - 152px)' : '100%' 
+              width: shouldShowClearOption ? 'calc(100% - 152px)' : '100%' 
             }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
             style={{ overflow: 'visible' }}
@@ -425,138 +351,55 @@ export default function HorizontalFilter({
               className="flex items-center gap-3 overflow-x-auto scrollbar-hide pb-2 scroll-smooth pr-12" 
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overflowY: 'visible' }}
             >
-              {/* All Filters Dropdown Button */}
-              <div className="relative" data-dropdown-container>
-                <motion.button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    console.log('All Filters clicked, current state:', showAllFiltersDropdown)
-                    
-                    if (!showAllFiltersDropdown && buttonRef.current) {
-                      const rect = buttonRef.current.getBoundingClientRect()
-                      setDropdownPosition({
-                        top: rect.bottom + window.scrollY + 8,
-                        left: rect.left + window.scrollX
-                      })
-                    }
-                    
-                    setShowAllFiltersDropdown(!showAllFiltersDropdown)
-                  }}
-                  ref={buttonRef}
-                  tabIndex={0}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                    showAllFiltersDropdown
-                      ? 'bg-orange-500 text-white shadow-lg'
-                      : selectedCategories.includes('All') && getActiveFiltersCount() === 0
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
-                  }`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {getFilterIcon(activeFilterType)}
-                  <span>
-                    {getActiveFiltersCount() > 0 ? getFilterLabel(activeFilterType) : 'All Filters'}
-                  </span>
-                  {getActiveFiltersCount() > 0 && (
-                    <span className="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">
-                      {getActiveFiltersCount()}
-                    </span>
-                  )}
-                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showAllFiltersDropdown ? 'rotate-180' : ''}`} />
-                </motion.button>
+              {/* All Recruiters Button - Always visible */}
+              <motion.button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleCategoryToggle('All Tools', e)
+                }}
+                onFocus={(e) => {
+                  e.preventDefault()
+                  e.currentTarget.blur()
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  const scrollY = window.scrollY
+                  setTimeout(() => {
+                    window.scrollTo(0, scrollY)
+                  }, 0)
+                }}
+                tabIndex={-1}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                  selectedCategories.includes('All')
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <span>All Recruiters</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  selectedCategories.includes('All')
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-white text-gray-600'
+                }`}>
+                  {tools.filter(tool => !tool.hidden).length}
+                </span>
+              </motion.button>
 
-
-              </div>
-
-              {/* All Recruiters Option for Specializations */}
-              {activeFilterType === 'specializations' && (
-                <motion.button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleCategoryToggle('All Tools', e)
-                  }}
-                  onFocus={(e) => {
-                    e.preventDefault()
-                    e.currentTarget.blur()
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    const scrollY = window.scrollY
-                    setTimeout(() => {
-                      window.scrollTo(0, scrollY)
-                    }, 0)
-                  }}
-                  tabIndex={-1}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                    selectedCategories.includes('All')
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <span>All Recruiters</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    selectedCategories.includes('All')
-                      ? 'bg-white/20 text-white' 
-                      : 'bg-white text-gray-600'
-                  }`}>
-                    {tools.filter(tool => !tool.hidden).length}
-                  </span>
-                </motion.button>
-              )}
-
-              {/* Active Filter Options */}
-              {getFilterOptions().map((option: string) => {
-                const isSelected = isFilterActive(activeFilterType, option)
-                const count = activeFilterType === 'specializations' 
-                  ? getCategoryCount(option)
-                  : tools.filter(tool => {
-                      if (tool.hidden) return false
-                      switch (activeFilterType) {
-                        case 'locations':
-                          return tool.location && tool.location.split(',')[0].trim() === option
-                        case 'experience':
-                          const exp = tool.experience?.toLowerCase() || ''
-                          if (option === '1-3 years') return exp.includes('1') || exp.includes('2') || exp.includes('3')
-                          if (option === '4-6 years') return exp.includes('4') || exp.includes('5') || exp.includes('6')
-                          if (option === '7-9 years') return exp.includes('7') || exp.includes('8') || exp.includes('9')
-                          if (option === '10+ years') return exp.includes('10') || exp.includes('15')
-                          return false
-                        case 'ratings':
-                          const rating = tool.rating || 0
-                          if (option === '4.5+ Stars') return rating >= 4.5
-                          if (option === '4.0+ Stars') return rating >= 4.0
-                          if (option === '3.5+ Stars') return rating >= 3.5
-                          return true
-                        case 'badges':
-                          const badgeMap: { [key: string]: string } = {
-                            'Top Rated': 'top-rated',
-                            'Verified': 'verified',
-                            'Rising Star': 'rising-star'
-                          }
-                          return tool.badge === badgeMap[option]
-                        case 'companies':
-                          return tool.company === option
-                        case 'remote':
-                          if (option === 'Remote Available') return tool.remoteAvailable === true
-                          if (option === 'On-site Only') return tool.remoteAvailable === false
-                          return false
-                        default:
-                          return false
-                      }
-                    }).length
+              {/* Specializations */}
+              {getUniqueSpecializations().map((option: string) => {
+                const isSelected = selectedCategories.includes(option) && !selectedCategories.includes('All')
+                const count = getCategoryCount(option)
                 
                 return (
                   <motion.button
-                    key={option}
+                    key={`spec-${option}`}
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      handleFilterOptionClick(activeFilterType, option)
+                      handleCategoryToggle(option)
                     }}
                     onFocus={(e) => {
                       e.preventDefault()
@@ -578,6 +421,321 @@ export default function HorizontalFilter({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
+                    <Briefcase className="w-4 h-4" />
+                    <span>{option}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      isSelected 
+                        ? 'bg-white/20 text-white' 
+                        : 'bg-white text-gray-600'
+                    }`}>
+                      {count}
+                    </span>
+                  </motion.button>
+                )
+              })}
+
+              {/* Locations */}
+              {getUniqueLocations().map((option: string) => {
+                const isSelected = filters.locations.includes(option)
+                const count = tools.filter(tool => {
+                  if (tool.hidden) return false
+                  const location = tool.location.split(',').pop()?.trim() || tool.location
+                  const normalizedLocation = location === 'CA' || location === 'NY' || location === 'TX' || location === 'IL' || location === 'MA' || location === 'WA' || location === 'GA' || location === 'FL' || location === 'MI' || location === 'MN' || location === 'AZ' || location === 'OR' || location === 'CO' || location === 'VA' || location === 'PA' || location === 'DC' ? 'United States' : location
+                  return normalizedLocation === option
+                }).length
+                
+                return (
+                  <motion.button
+                    key={`loc-${option}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleAdvancedFilterChange('locations', option)
+                    }}
+                    onFocus={(e) => {
+                      e.preventDefault()
+                      e.currentTarget.blur()
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      const scrollY = window.scrollY
+                      setTimeout(() => {
+                        window.scrollTo(0, scrollY)
+                      }, 0)
+                    }}
+                    tabIndex={-1}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                      isSelected
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <MapPin className="w-4 h-4" />
+                    <span>{option}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      isSelected 
+                        ? 'bg-white/20 text-white' 
+                        : 'bg-white text-gray-600'
+                    }`}>
+                      {count}
+                    </span>
+                  </motion.button>
+                )
+              })}
+
+              {/* Experience Levels */}
+              {getUniqueExperienceLevels().map((option: string) => {
+                const isSelected = filters.experienceLevels.includes(option)
+                const count = tools.filter(tool => {
+                  if (tool.hidden) return false
+                  const exp = tool.experience?.toLowerCase() || ''
+                  if (option === '1-3 years') return exp.includes('1') || exp.includes('2') || exp.includes('3')
+                  if (option === '4-6 years') return exp.includes('4') || exp.includes('5') || exp.includes('6')
+                  if (option === '7-9 years') return exp.includes('7') || exp.includes('8') || exp.includes('9')
+                  if (option === '10+ years') return exp.includes('10') || exp.includes('15')
+                  return false
+                }).length
+                
+                return (
+                  <motion.button
+                    key={`exp-${option}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleAdvancedFilterChange('experienceLevels', option)
+                    }}
+                    onFocus={(e) => {
+                      e.preventDefault()
+                      e.currentTarget.blur()
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      const scrollY = window.scrollY
+                      setTimeout(() => {
+                        window.scrollTo(0, scrollY)
+                      }, 0)
+                    }}
+                    tabIndex={-1}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                      isSelected
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Calendar className="w-4 h-4" />
+                    <span>{option}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      isSelected 
+                        ? 'bg-white/20 text-white' 
+                        : 'bg-white text-gray-600'
+                    }`}>
+                      {count}
+                    </span>
+                  </motion.button>
+                )
+              })}
+
+              {/* Ratings */}
+              {getRatingRanges().map((option: string) => {
+                const isSelected = filters.ratings.includes(option)
+                const count = tools.filter(tool => {
+                  if (tool.hidden) return false
+                  const rating = tool.rating || 0
+                  if (option === '4.5+ Stars') return rating >= 4.5
+                  if (option === '4.0+ Stars') return rating >= 4.0
+                  if (option === '3.5+ Stars') return rating >= 3.5
+                  return true
+                }).length
+                
+                return (
+                  <motion.button
+                    key={`rating-${option}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleAdvancedFilterChange('ratings', option)
+                    }}
+                    onFocus={(e) => {
+                      e.preventDefault()
+                      e.currentTarget.blur()
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      const scrollY = window.scrollY
+                      setTimeout(() => {
+                        window.scrollTo(0, scrollY)
+                      }, 0)
+                    }}
+                    tabIndex={-1}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                      isSelected
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Star className="w-4 h-4" />
+                    <span>{option}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      isSelected 
+                        ? 'bg-white/20 text-white' 
+                        : 'bg-white text-gray-600'
+                    }`}>
+                      {count}
+                    </span>
+                  </motion.button>
+                )
+              })}
+
+              {/* Badges */}
+              {getUniqueBadges().map((option: string) => {
+                const isSelected = filters.badges.includes(option)
+                const badgeMap: { [key: string]: string } = {
+                  'Top Rated': 'top-rated',
+                  'Verified': 'verified',
+                  'Rising Star': 'rising-star'
+                }
+                const count = tools.filter(tool => {
+                  if (tool.hidden) return false
+                  return tool.badge === badgeMap[option]
+                }).length
+                
+                return (
+                  <motion.button
+                    key={`badge-${option}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleAdvancedFilterChange('badges', option)
+                    }}
+                    onFocus={(e) => {
+                      e.preventDefault()
+                      e.currentTarget.blur()
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      const scrollY = window.scrollY
+                      setTimeout(() => {
+                        window.scrollTo(0, scrollY)
+                      }, 0)
+                    }}
+                    tabIndex={-1}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                      isSelected
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Award className="w-4 h-4" />
+                    <span>{option}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      isSelected 
+                        ? 'bg-white/20 text-white' 
+                        : 'bg-white text-gray-600'
+                    }`}>
+                      {count}
+                    </span>
+                  </motion.button>
+                )
+              })}
+
+              {/* Companies */}
+              {getUniqueCompanies().map((option: string) => {
+                const isSelected = filters.companies.includes(option)
+                const count = tools.filter(tool => {
+                  if (tool.hidden) return false
+                  return tool.company === option
+                }).length
+                
+                return (
+                  <motion.button
+                    key={`company-${option}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleAdvancedFilterChange('companies', option)
+                    }}
+                    onFocus={(e) => {
+                      e.preventDefault()
+                      e.currentTarget.blur()
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      const scrollY = window.scrollY
+                      setTimeout(() => {
+                        window.scrollTo(0, scrollY)
+                      }, 0)
+                    }}
+                    tabIndex={-1}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                      isSelected
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Building className="w-4 h-4" />
+                    <span>{option}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      isSelected 
+                        ? 'bg-white/20 text-white' 
+                        : 'bg-white text-gray-600'
+                    }`}>
+                      {count}
+                    </span>
+                  </motion.button>
+                )
+              })}
+
+              {/* Remote Work Options */}
+              {['Remote Available', 'On-site Only'].map((option: string) => {
+                const isSelected = (option === 'Remote Available' && filters.remoteAvailable === true) || 
+                                 (option === 'On-site Only' && filters.remoteAvailable === false)
+                const count = tools.filter(tool => {
+                  if (tool.hidden) return false
+                  if (option === 'Remote Available') return tool.remoteAvailable === true
+                  if (option === 'On-site Only') return tool.remoteAvailable === false
+                  return false
+                }).length
+                
+                return (
+                  <motion.button
+                    key={`remote-${option}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      const remoteValue = option === 'Remote Available' ? true : false
+                      handleAdvancedFilterChange('remoteAvailable', remoteValue)
+                    }}
+                    onFocus={(e) => {
+                      e.preventDefault()
+                      e.currentTarget.blur()
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      const scrollY = window.scrollY
+                      setTimeout(() => {
+                        window.scrollTo(0, scrollY)
+                      }, 0)
+                    }}
+                    tabIndex={-1}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                      isSelected
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Globe className="w-4 h-4" />
                     <span>{option}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       isSelected 
@@ -599,9 +757,9 @@ export default function HorizontalFilter({
             </div>
           </motion.div>
           
-          {/* Separate Clear Filter Option - Only shows when filters are active */}
+          {/* Separate Clear Filter Option - Only shows when 2+ filters are active */}
           <AnimatePresence>
-            {getActiveFiltersCount() > 0 && (
+            {shouldShowClearOption && (
               <motion.div
                 className="flex justify-end"
                 initial={{ opacity: 0, width: 0 }}
@@ -629,7 +787,7 @@ export default function HorizontalFilter({
                   exit={{ opacity: 0, x: 10 }}
                   transition={{ duration: 0.2 }}
                 >
-                  Clear Filters
+                  Clear Options
                 </motion.button>
               </motion.div>
             )}
@@ -644,80 +802,7 @@ export default function HorizontalFilter({
         }
       `}</style>
 
-      {/* Portal-based Dropdown with Backdrop */}
-      {typeof window !== 'undefined' && createPortal(
-        <AnimatePresence>
-          {showAllFiltersDropdown && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/20 backdrop-blur-sm"
-                style={{ zIndex: 9998 }}
-                onClick={() => setShowAllFiltersDropdown(false)}
-              />
-              
-              {/* Dropdown */}
-              <motion.div
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ 
-                  duration: 0.2,
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 30
-                }}
-                className="fixed w-64 bg-white rounded-lg shadow-2xl border border-gray-200"
-                style={{
-                  zIndex: 9999,
-                  top: dropdownPosition.top,
-                  left: dropdownPosition.left
-                }}
-                data-dropdown-container
-              >
-                <div className="p-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Filter Options</h3>
-                  <div className="space-y-2">
-                    {filterTypes.map((filterType) => (
-                      <motion.button
-                        key={filterType.key}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          console.log('Filter type clicked:', filterType.key)
-                          handleFilterTypeChange(filterType.key)
-                          setShowAllFiltersDropdown(false)
-                        }}
-                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-all duration-200 ${
-                          activeFilterType === filterType.key
-                            ? 'bg-orange-50 text-orange-700 border border-orange-200 shadow-sm'
-                            : 'text-gray-700 hover:bg-gray-50 hover:shadow-sm'
-                        }`}
-                        whileHover={{ x: 2, scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        {filterType.icon}
-                        <span>{filterType.label}</span>
-                        {activeFilterType === filterType.key && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="ml-auto w-2 h-2 bg-orange-500 rounded-full"
-                          />
-                        )}
-                      </motion.button>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
+
     </div>
   )
 }
