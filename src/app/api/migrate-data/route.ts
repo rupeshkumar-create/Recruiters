@@ -181,32 +181,111 @@ const MIGRATION_DATA = {
 export async function POST(request: NextRequest) {
   try {
     console.log('🔄 Starting data migration...');
-
-    // For Vercel deployment, we'll use environment variables or direct data
-    // Since file system is read-only, we'll store in memory/database
     
+    const { supabaseAdmin } = await import('../../../lib/supabase');
     const recruiters = MIGRATION_DATA.recruiters;
     
     console.log(`✅ Migrating ${recruiters.length} recruiters...`);
 
-    // In a real deployment, you would:
-    // 1. Store in Supabase database
-    // 2. Or use Vercel KV storage
-    // 3. Or use environment variables for small datasets
+    // Try to migrate to Supabase
+    if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY && 
+        process.env.NEXT_PUBLIC_SUPABASE_URL && 
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase')) {
+      
+      console.log('📤 Uploading to Supabase...');
+      
+      // Convert recruiters to Supabase format
+      const supabaseRecruiters = recruiters.map(recruiter => ({
+        id: recruiter.id,
+        name: recruiter.name,
+        job_title: recruiter.jobTitle,
+        company: recruiter.company,
+        email: recruiter.email,
+        phone: recruiter.phone,
+        linkedin: recruiter.linkedin,
+        website: recruiter.website || null,
+        specialization: recruiter.specialization,
+        experience: recruiter.experience,
+        location: recruiter.location,
+        remote_available: recruiter.remoteAvailable || false,
+        bio: recruiter.bio,
+        avatar: recruiter.avatar,
+        slug: recruiter.slug,
+        featured: recruiter.featured || false,
+        hidden: recruiter.hidden || false,
+        approved: true,
+        status: 'approved',
+        submitter_email: recruiter.submitterEmail || recruiter.email,
+        rating: recruiter.rating || 0,
+        review_count: recruiter.reviewCount || 0,
+        placements: recruiter.placements || 0,
+        avg_time_to_hire: recruiter.avgTimeToHire || 30,
+        candidate_satisfaction: recruiter.candidateSatisfaction || 90,
+        client_retention: recruiter.clientRetention || 85,
+        badge: recruiter.badge || null,
+        achievements: recruiter.achievements || [],
+        work_experience: recruiter.workExperience || [],
+        roles_placed: recruiter.rolesPlaced || [],
+        industries: recruiter.industries || [],
+        keywords: recruiter.keywords || [],
+        languages: recruiter.languages || [],
+        seniority_levels: recruiter.seniorityLevels || [],
+        employment_types: recruiter.employmentTypes || [],
+        regions: recruiter.regions || [],
+        certifications: recruiter.certifications || [],
+        testimonials: recruiter.testimonials || [],
+        availability: recruiter.availability || { accepting: true, nextAvailable: '' },
+        social_proof: recruiter.socialProof || { linkedinFollowers: 0, featuredIn: [] },
+        created_at: recruiter.created_at || new Date().toISOString(),
+        updated_at: recruiter.updated_at || new Date().toISOString()
+      }));
 
-    // For now, we'll return the data to confirm migration works
-    return NextResponse.json({
-      success: true,
-      message: 'Data migration completed successfully',
-      migrated: {
-        recruiters: recruiters.length,
-        submissions: MIGRATION_DATA.submissions.length
-      },
-      data: {
-        recruiters: recruiters.slice(0, 5), // Return first 5 for verification
-        totalCount: recruiters.length
+      // Upsert recruiters (insert or update if exists)
+      const { data, error } = await supabaseAdmin
+        .from('recruiters')
+        .upsert(supabaseRecruiters, { onConflict: 'id' });
+
+      if (error) {
+        console.error('Supabase migration error:', error);
+        return NextResponse.json({ 
+          success: false,
+          error: 'Failed to migrate to Supabase',
+          details: error.message
+        }, { status: 500 });
       }
-    });
+
+      console.log('✅ Successfully migrated to Supabase');
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Data migration completed successfully to Supabase',
+        migrated: {
+          recruiters: recruiters.length,
+          submissions: MIGRATION_DATA.submissions.length
+        },
+        supabaseResult: {
+          inserted: data?.length || recruiters.length,
+          error: null
+        }
+      });
+
+    } else {
+      console.log('⚠️ Supabase not configured, returning migration data');
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Data migration prepared (Supabase not configured)',
+        migrated: {
+          recruiters: recruiters.length,
+          submissions: MIGRATION_DATA.submissions.length
+        },
+        data: {
+          recruiters: recruiters.slice(0, 5), // Return first 5 for verification
+          totalCount: recruiters.length
+        },
+        note: 'Configure Supabase environment variables to migrate to database'
+      });
+    }
 
   } catch (error) {
     console.error('Migration error:', error);
