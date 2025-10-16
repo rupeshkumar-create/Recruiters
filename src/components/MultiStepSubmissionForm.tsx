@@ -197,7 +197,11 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
       setFormData(prev => ({ ...prev, avatar: imageUrl }))
       
       // Clear any previous errors
-      setErrors(prev => ({ ...prev, avatar: undefined }))
+      setErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors.avatar
+        return newErrors
+      })
       
     } catch (error) {
       console.error('❌ Upload error:', error)

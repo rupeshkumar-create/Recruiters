@@ -330,8 +330,8 @@ export async function PUT(request: NextRequest) {
       // Add approved recruiter to the main recruiters list
       console.log('🎯 Adding approved recruiter to main directory...');
       try {
-          // Generate slug
-          const slug = submission.name.toLowerCase()
+          // Generate slug for the approved recruiter
+          const approvedSlug = submission.name.toLowerCase()
             .replace(/\s+/g, '-')
             .replace(/[^a-z0-9-]/g, '')
             .substring(0, 50);
@@ -352,7 +352,7 @@ export async function PUT(request: NextRequest) {
             remoteAvailable: submission.remote_available || false,
             bio: submission.bio,
             avatar: submission.avatar,
-            slug: slug,
+            slug: approvedSlug,
             featured: false,
             hidden: false, // Make visible on homepage
             approved: true,
@@ -438,11 +438,7 @@ export async function PUT(request: NextRequest) {
         console.log('🔄 Recruiter approval process completed');
 
         // Send approval email to the recruiter
-        const slug = submission.name.toLowerCase()
-          .replace(/\s+/g, '-')
-          .replace(/[^a-z0-9-]/g, '')
-          .substring(0, 50);
-        const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/tool/${slug}`;
+        const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/tool/${approvedSlug}`;
         await emailService.sendApprovalNotification({
           name: submission.name,
           email: submission.email,
