@@ -171,23 +171,38 @@ export default function MultiStepSubmissionForm({ isOpen, onClose }: MultiStepSu
       formData.append('type', 'headshot')
 
       // Upload to your API endpoint
+      console.log('📤 Uploading image to /api/upload-headshot...')
       const response = await fetch('/api/upload-headshot', {
         method: 'POST',
         body: formData,
       })
 
+      console.log('📥 Upload response status:', response.status)
+
       if (!response.ok) {
-        throw new Error('Upload failed')
+        const errorText = await response.text()
+        console.error('Upload failed:', response.status, errorText)
+        throw new Error(`Upload failed: ${response.status} ${errorText}`)
       }
 
       const result = await response.json()
-      const imageUrl = result.url
+      console.log('✅ Upload successful:', result)
+      
+      if (!result.url) {
+        throw new Error('No URL returned from upload')
+      }
 
+      const imageUrl = result.url
       setUploadedImage(imageUrl)
       setFormData(prev => ({ ...prev, avatar: imageUrl }))
+      
+      // Clear any previous errors
+      setErrors(prev => ({ ...prev, avatar: undefined }))
+      
     } catch (error) {
-      console.error('Upload error:', error)
-      setErrors({ avatar: 'Failed to upload image. Please try again.' })
+      console.error('❌ Upload error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload image. Please try again.'
+      setErrors({ avatar: errorMessage })
     } finally {
       setIsUploading(false)
     }

@@ -22,19 +22,28 @@ export async function POST(request: NextRequest) {
     // Convert file to base64 for temporary storage
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    
+    // Check if file is too large for data URL (limit to 1MB for data URLs)
+    if (buffer.length > 1024 * 1024) {
+      // For larger files, use a placeholder and log the issue
+      console.log('File too large for data URL, using placeholder:', file.size, 'bytes');
+      const placeholderUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(file.name.split('.')[0])}&background=3B82F6&color=fff&size=128`;
+      
+      return NextResponse.json({ 
+        url: placeholderUrl,
+        filename: file.name,
+        size: file.size,
+        type: file.type,
+        note: 'File too large for data URL, using placeholder. Consider using cloud storage for production.'
+      });
+    }
+    
     const base64 = buffer.toString('base64');
     const mimeType = file.type;
     
     // Create data URL for immediate use
     const dataUrl = `data:${mimeType};base64,${base64}`;
 
-    // For production, you would upload to a cloud service like:
-    // - Cloudinary
-    // - AWS S3
-    // - Supabase Storage
-    // - Vercel Blob
-    
-    // For now, we'll use the data URL which works but has limitations
     console.log('Image uploaded successfully, size:', file.size, 'bytes');
 
     return NextResponse.json({ 
@@ -42,7 +51,7 @@ export async function POST(request: NextRequest) {
       filename: file.name,
       size: file.size,
       type: file.type,
-      note: 'Using data URL for demo. For production, integrate with cloud storage.'
+      success: true
     });
 
   } catch (error) {

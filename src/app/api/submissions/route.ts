@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { emailService } from '@/lib/email';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
-import { RecruiterStorage } from '@/lib/recruiterStorage';
 import { writeFile, readFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
@@ -183,10 +182,16 @@ export async function POST(request: NextRequest) {
 
     let submission;
 
+    console.log('💾 Attempting to save submission to Supabase...');
+    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Not set');
+    console.log('Supabase Anon Key:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Not set');
+
     // Try Supabase first
     if (supabase && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && 
         process.env.NEXT_PUBLIC_SUPABASE_URL && 
         !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase')) {
+      
+      console.log('✅ Using Supabase for submission storage');
       const { data, error } = await supabase
         .from('submissions')
         .insert([submissionData])
@@ -194,7 +199,8 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('❌ Supabase error:', error);
+        console.log('📁 Falling back to file storage');
         // Fall back to file storage
         submission = {
           id: Date.now().toString(),
@@ -207,9 +213,11 @@ export async function POST(request: NextRequest) {
         currentSubmissions.push(submission);
         await saveSubmissions(currentSubmissions);
       } else {
+        console.log('✅ Submission saved to Supabase successfully');
         submission = data;
       }
     } else {
+      console.log('📁 Using file-based storage (Supabase not configured)');
       // Fallback to file-based storage
       submission = {
         id: Date.now().toString(),
@@ -231,14 +239,20 @@ export async function POST(request: NextRequest) {
     });
 
     // Send confirmation email to the submitter
+    console.log('📧 Attempting to send confirmation email...');
+    console.log('Email service configured:', process.env.LOOPS_API_KEY ? 'Yes' : 'No');
     try {
-      await emailService.sendSubmissionConfirmation({
+      const emailSent = await emailService.sendSubmissionConfirmation({
         name: submission.name,
         email: submission.email,
       });
-      console.log('Confirmation email sent to:', submission.email);
+      if (emailSent) {
+        console.log('✅ Confirmation email sent to:', submission.email);
+      } else {
+        console.log('❌ Failed to send confirmation email (service returned false)');
+      }
     } catch (error) {
-      console.error('Failed to send confirmation email:', error);
+      console.error('❌ Failed to send confirmation email:', error);
       // Don't fail the submission if email fails
     }
 
@@ -314,14 +328,8 @@ export async function PUT(request: NextRequest) {
       console.log('Submission approved:', id);
 
       // Add approved recruiter to the main recruiters list
+      console.log('🎯 Adding approved recruiter to main directory...');
       try {
-        // Check if recruiter already exists in directory
-        const existingRecruiters = await RecruiterStorage.getAll();
-        const existingRecruiter = existingRecruiters.find(r => r.id === submission.id);
-        
-        if (existingRecruiter) {
-          console.log('Recruiter already exists in directory:', submission.name);
-        } else {
           // Generate slug
           const slug = submission.name.toLowerCase()
             .replace(/\s+/g, '-')
@@ -404,64 +412,30 @@ export async function PUT(request: NextRequest) {
             updated_at: new Date().toISOString()
           };
 
-          // Add to recruiters storage directly
+          // Add to recruiters via API call
           try {
-            const { writeFile, readFile, mkdir } = await import('fs/promises');
-            const { existsSync } = await import('fs');
-            const { join } = await import('path');
-            
-            const RECRUITERS_FILE = join(process.cwd(), 'data', 'recruiters.json');
-            const dataDir = join(process.cwd(), 'data');
-            
-            // Ensure data directory exists
-            if (!existsSync(dataDir)) {
-              await mkdir(dataDir, { recursive: true });
-            }
-            
-            // Load current recruiters
-            let currentRecruiters = [];
-            if (existsSync(RECRUITERS_FILE)) {
-              const data = await readFile(RECRUITERS_FILE, 'utf-8');
-              currentRecruiters = JSON.parse(data);
-            } else {
-              // Initialize with default data if file doesn't exist
-              const { csvRecruiters } = await import('@/lib/data');
-              currentRecruiters = csvRecruiters;
-            }
-            
-            // Check if recruiter already exists
-            const existingIndex = currentRecruiters.findIndex((r: any) => r.id === newRecruiter.id);
-            
-            if (existingIndex >= 0) {
-              // Update existing recruiter
-              currentRecruiters[existingIndex] = newRecruiter;
-            } else {
-              // Add new recruiter
-              currentRecruiters.push(newRecruiter);
-            }
-            
-            // Save updated list
-            await writeFile(RECRUITERS_FILE, JSON.stringify(currentRecruiters, null, 2));
-            console.log('Recruiter added to main directory:', newRecruiter.name);
-            
-          } catch (fileError) {
-            console.error('Failed to add recruiter to file storage:', fileError);
-            // Fallback to RecruiterStorage
-            try {
-              await RecruiterStorage.addRecruiter(newRecruiter);
-              console.log('Recruiter added via RecruiterStorage fallback:', newRecruiter.name);
-            } catch (storageError) {
-              console.error('Failed to add recruiter via RecruiterStorage:', storageError);
-            }
-          }
-        }
+            console.log('📡 Calling recruiters API to add approved recruiter...');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/recruiters`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(newRecruiter),
+            });
 
-        // Trigger homepage refresh by dispatching event (if in browser context)
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('recruitersUpdated', {
-            detail: { recruiters: await RecruiterStorage.getAll() }
-          }));
-        }
+            if (response.ok) {
+              const result = await response.json();
+              console.log('✅ Recruiter added to main directory via API:', newRecruiter.name);
+              console.log('API response:', result);
+            } else {
+              const errorText = await response.text();
+              console.error('❌ Failed to add recruiter via API:', response.status, errorText);
+            }
+          } catch (apiError) {
+            console.error('❌ Failed to call recruiters API:', apiError);
+          }
+
+        console.log('🔄 Recruiter approval process completed');
 
         // Send approval email to the recruiter
         const slug = submission.name.toLowerCase()
