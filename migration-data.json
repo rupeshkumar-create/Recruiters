@@ -1,0 +1,1115 @@
+{
+  "recruiters": [
+    {
+      "id": "1",
+      "name": "Sarah Johnson",
+      "jobTitle": "Senior Technical Recruiter",
+      "company": "TechTalent Solutions",
+      "email": "sarah.johnson@techtalent.com",
+      "phone": "+1 (555) 123-4567",
+      "linkedin": "https://linkedin.com/in/sarahjohnson",
+      "website": "https://techtalent.com/sarah",
+      "specialization": "Software Engineering",
+      "experience": "8 years",
+      "location": "San Francisco, CA",
+      "remoteAvailable": true,
+      "bio": "Passionate technical recruiter with 8+ years of experience connecting top engineering talent with innovative companies. I specialize in full-stack development, DevOps, and engineering leadership roles, with a proven track record of successful placements at unicorn startups and Fortune 500 companies.",
+      "avatar": "/images/recruiters/sarah-johnson.jpg",
+      "slug": "sarah-johnson",
+      "featured": true,
+      "rating": 4.9,
+      "reviewCount": 127,
+      "placements": 247,
+      "avgTimeToHire": 21,
+      "candidateSatisfaction": 95,
+      "clientRetention": 92,
+      "badge": "top-rated",
+      "achievements": [
+        "Top 1% recruiter on LinkedIn for tech placements",
+        "Placed 50+ engineers at Series A-C startups",
+        "95% candidate satisfaction rate over 3 years",
+        "Expert in React, Node.js, and DevOps recruiting",
+        "Built recruiting processes for 3 unicorn companies",
+        "Speaker at TechRecruit Conference 2023"
+      ],
+      "workExperience": [
+        {
+          "jobTitle": "Senior Technical Recruiter",
+          "company": "TechTalent Solutions",
+          "duration": "2020 - Present",
+          "description": "Lead technical recruiting for Series A-C startups, specializing in engineering leadership and full-stack development roles."
+        },
+        {
+          "jobTitle": "Technical Recruiter",
+          "company": "InnovateTech Recruiting",
+          "duration": "2018 - 2020",
+          "description": "Focused on frontend and backend engineering roles for mid-stage tech companies."
+        },
+        {
+          "jobTitle": "Junior Recruiter",
+          "company": "Bay Area Talent",
+          "duration": "2016 - 2018",
+          "description": "Started career in tech recruiting, learning the fundamentals of technical assessment and candidate sourcing."
+        }
+      ],
+      "rolesPlaced": [
+        "CTO",
+        "VP Engineering",
+        "Engineering Manager",
+        "Senior Software Engineer",
+        "Full-Stack Developer",
+        "DevOps Engineer",
+        "Frontend Engineer",
+        "Backend Engineer"
+      ],
+      "industries": [
+        "Fintech",
+        "SaaS",
+        "E-commerce",
+        "Healthcare Tech",
+        "EdTech",
+        "AI/ML"
+      ],
+      "keywords": [
+        "React",
+        "Node.js",
+        "Python",
+        "AWS",
+        "Kubernetes",
+        "Leadership",
+        "Startup",
+        "Scale-up"
+      ],
+      "languages": [
+        "English",
+        "Spanish"
+      ],
+      "seniorityLevels": [
+        "Mid-level",
+        "Senior",
+        "Staff",
+        "Principal",
+        "Executive"
+      ],
+      "employmentTypes": [
+        "Full-Time",
+        "Contract"
+      ],
+      "regions": [
+        "US West Coast",
+        "Remote-First",
+        "San Francisco Bay Area"
+      ],
+      "certifications": [
+        "AIRS Certified",
+        "LinkedIn Recruiter Certified",
+        "SHRM-CP"
+      ],
+      "testimonials": [
+        {
+          "quote": "Sarah found me the perfect role at a unicorn startup. Her technical understanding and personal approach made all the difference.",
+          "reviewer": "Alex Chen, Senior Engineer",
+          "rating": 5
+        },
+        {
+          "quote": "Best recruiter I've worked with. She really understands both the technical and cultural fit aspects.",
+          "reviewer": "Maria Rodriguez, CTO",
+          "rating": 5
+        }
+      ],
+      "availability": {
+        "accepting": true,
+        "nextAvailable": "Available now"
+      },
+      "socialProof": {
+        "linkedinFollowers": 15000,
+        "featuredIn": [
+          "TechCrunch",
+          "Built In SF",
+          "The Muse"
+        ]
+      }
+    },
+    {
+      "id": "2",
+      "name": "Michael Chen",
+      "jobTitle": "Executive Search Partner",
+      "company": "Executive Search Partners",
+      "email": "michael.chen@execsearch.com",
+      "phone": "+1 (555) 234-5678",
+      "linkedin": "https://linkedin.com/in/michaelchen",
+      "website": "https://execsearch.com/michael-chen",
+      "specialization": "Executive Leadership",
+      "experience": "12 years",
+      "location": "New York, NY",
+      "remoteAvailable": false,
+      "bio": "Elite executive search consultant with 12+ years of experience placing C-suite leaders and board members at Fortune 500 companies. I specialize in transformational leadership roles and have a deep network of senior executives across multiple industries.",
+      "avatar": "/images/recruiters/michael-chen.jpg",
+      "slug": "michael-chen",
+      "featured": true,
+      "rating": 4.8,
+      "reviewCount": 89,
+      "placements": 156,
+      "avgTimeToHire": 45,
+      "candidateSatisfaction": 98,
+      "clientRetention": 95,
+      "badge": "verified",
+      "achievements": [
+        "Placed 25+ C-suite executives at Fortune 500 companies",
+        "Expert in CEO, CFO, and board member searches",
+        "98% client satisfaction rate",
+        "Featured speaker at Executive Leadership Summit",
+        "Built executive networks across 15+ industries",
+        "Advisor to 3 private equity firms on leadership assessment"
+      ],
+      "workExperience": [
+        {
+          "jobTitle": "Executive Search Partner",
+          "company": "Executive Search Partners",
+          "duration": "2015 - Present",
+          "description": "Lead C-suite and board searches for Fortune 500 companies and private equity portfolio companies."
+        },
+        {
+          "jobTitle": "Principal Consultant",
+          "company": "Korn Ferry",
+          "duration": "2012 - 2015",
+          "description": "Specialized in executive search for financial services and technology sectors."
+        }
+      ],
+      "rolesPlaced": [
+        "CEO",
+        "CFO",
+        "COO",
+        "CHRO",
+        "Board Member",
+        "Managing Director",
+        "Division President"
+      ],
+      "industries": [
+        "Financial Services",
+        "Technology",
+        "Healthcare",
+        "Manufacturing",
+        "Private Equity"
+      ],
+      "keywords": [
+        "C-Suite",
+        "Board Search",
+        "Transformation",
+        "Leadership",
+        "Private Equity",
+        "IPO"
+      ],
+      "languages": [
+        "English",
+        "Mandarin",
+        "Cantonese"
+      ],
+      "seniorityLevels": [
+        "C-Suite",
+        "SVP",
+        "EVP",
+        "Board Level"
+      ],
+      "employmentTypes": [
+        "Full-Time",
+        "Board Positions"
+      ],
+      "regions": [
+        "North America",
+        "Global"
+      ],
+      "certifications": [
+        "AESC Member",
+        "Executive Search Certified"
+      ],
+      "testimonials": [
+        {
+          "quote": "Michael's executive network and assessment skills are unparalleled. He found us the perfect CEO for our transformation.",
+          "reviewer": "Board Chair, Fortune 500",
+          "rating": 5
+        }
+      ],
+      "availability": {
+        "accepting": true,
+        "nextAvailable": "November 2024"
+      },
+      "socialProof": {
+        "linkedinFollowers": 25000,
+        "featuredIn": [
+          "Harvard Business Review",
+          "Forbes",
+          "Wall Street Journal"
+        ]
+      }
+    },
+    {
+      "id": "3",
+      "name": "Emily Rodriguez",
+      "jobTitle": "Healthcare Recruitment Specialist",
+      "company": "Healthcare Talent Group",
+      "email": "emily.rodriguez@healthtalent.com",
+      "phone": "+1 (555) 345-6789",
+      "linkedin": "https://linkedin.com/in/emilyrodriguez",
+      "specialization": "Healthcare & Life Sciences",
+      "experience": "6 years",
+      "location": "Boston, MA",
+      "remoteAvailable": true,
+      "bio": "Dedicated healthcare recruiter with 6+ years of experience connecting medical professionals with leading healthcare organizations. I specialize in physician recruitment, nursing leadership, and biotech talent acquisition with a deep understanding of healthcare compliance and industry trends.",
+      "avatar": "/images/recruiters/emily-rodriguez.jpg",
+      "slug": "emily-rodriguez",
+      "featured": true,
+      "rating": 4.7,
+      "reviewCount": 94,
+      "placements": 189,
+      "avgTimeToHire": 28,
+      "candidateSatisfaction": 93,
+      "clientRetention": 88,
+      "badge": "rising-star",
+      "achievements": [
+        "Placed 75+ physicians across major hospital systems",
+        "Expert in nursing leadership and CNO placements",
+        "Healthcare compliance and credentialing specialist",
+        "Built recruitment programs for 3 biotech startups",
+        "93% candidate satisfaction in healthcare placements"
+      ],
+      "workExperience": [
+        {
+          "jobTitle": "Healthcare Recruitment Specialist",
+          "company": "Healthcare Talent Group",
+          "duration": "2019 - Present",
+          "description": "Lead healthcare recruitment for hospitals, biotech companies, and medical device manufacturers."
+        },
+        {
+          "jobTitle": "Medical Recruiter",
+          "company": "MedTalent Solutions",
+          "duration": "2018 - 2019",
+          "description": "Focused on nursing and allied health professional recruitment."
+        }
+      ],
+      "rolesPlaced": [
+        "Chief Medical Officer",
+        "Chief Nursing Officer",
+        "Physician",
+        "Nurse Manager",
+        "Clinical Director",
+        "Biotech Scientist"
+      ],
+      "industries": [
+        "Healthcare",
+        "Biotech",
+        "Medical Devices",
+        "Pharmaceuticals",
+        "Hospital Systems"
+      ],
+      "keywords": [
+        "Healthcare",
+        "Physicians",
+        "Nursing",
+        "Biotech",
+        "Medical",
+        "Clinical"
+      ],
+      "languages": [
+        "English",
+        "Spanish"
+      ],
+      "seniorityLevels": [
+        "Mid-level",
+        "Senior",
+        "Executive"
+      ],
+      "employmentTypes": [
+        "Full-Time",
+        "Locum Tenens"
+      ],
+      "regions": [
+        "Northeast US",
+        "Remote"
+      ],
+      "certifications": [
+        "Healthcare Recruiter Certified",
+        "AIRS Certified"
+      ],
+      "testimonials": [
+        {
+          "quote": "Emily understood our unique needs as a biotech startup and found us exceptional scientific talent.",
+          "reviewer": "Dr. Sarah Kim, CTO",
+          "rating": 5
+        }
+      ],
+      "availability": {
+        "accepting": true,
+        "nextAvailable": "Available now"
+      },
+      "socialProof": {
+        "linkedinFollowers": 8500,
+        "featuredIn": [
+          "Healthcare Recruiting News",
+          "Becker's Hospital Review"
+        ]
+      }
+    },
+    {
+      "id": "4",
+      "name": "David Thompson",
+      "jobTitle": "Senior Finance Recruiter",
+      "company": "Financial Careers Inc",
+      "email": "david.thompson@fincareers.com",
+      "phone": "+1 (555) 456-7890",
+      "linkedin": "https://linkedin.com/in/davidthompson",
+      "specialization": "Finance & Banking",
+      "experience": "10 years",
+      "location": "Chicago, IL",
+      "remoteAvailable": false,
+      "bio": "Seasoned finance recruiter with 10+ years of experience in investment banking, private equity, and corporate finance. I have a strong network on Wall Street and specialize in placing top-tier financial professionals.",
+      "avatar": "/images/recruiters/david-thompson.jpg",
+      "slug": "david-thompson",
+      "featured": false,
+      "rating": 4.6,
+      "reviewCount": 78,
+      "placements": 134,
+      "avgTimeToHire": 35,
+      "candidateSatisfaction": 91,
+      "clientRetention": 85,
+      "badge": "verified",
+      "achievements": [
+        "Placed 50+ investment banking professionals",
+        "Expert in private equity and hedge fund recruitment",
+        "Strong Wall Street and Chicago finance network",
+        "Specialized in VP to MD level placements"
+      ],
+      "rolesPlaced": [
+        "Managing Director",
+        "Vice President",
+        "Director",
+        "Senior Analyst",
+        "Portfolio Manager"
+      ],
+      "industries": [
+        "Investment Banking",
+        "Private Equity",
+        "Hedge Funds",
+        "Corporate Finance"
+      ],
+      "keywords": [
+        "Finance",
+        "Banking",
+        "Investment",
+        "Private Equity",
+        "Wall Street"
+      ],
+      "languages": [
+        "English"
+      ],
+      "seniorityLevels": [
+        "Senior",
+        "VP",
+        "Director",
+        "MD"
+      ],
+      "employmentTypes": [
+        "Full-Time"
+      ],
+      "regions": [
+        "Chicago",
+        "New York",
+        "US Financial Centers"
+      ],
+      "certifications": [
+        "CFA",
+        "Financial Recruiter Certified"
+      ],
+      "availability": {
+        "accepting": true
+      }
+    },
+    {
+      "id": "5",
+      "name": "Lisa Wang",
+      "company": "Creative Minds Recruiting",
+      "email": "lisa.wang@creativeminds.com",
+      "phone": "+1 (555) 567-8901",
+      "linkedin": "https://linkedin.com/in/lisawang",
+      "specialization": "Marketing & Creative",
+      "experience": "7 years",
+      "location": "Los Angeles, CA",
+      "bio": "Creative industry recruiter specializing in marketing, advertising, design, and digital media roles. Expert in matching creative talent with innovative companies.",
+      "avatar": "/images/recruiters/lisa-wang.jpg",
+      "slug": "lisa-wang",
+      "featured": false,
+      "rating": 4.8,
+      "placements": 203
+    },
+    {
+      "id": "6",
+      "name": "Robert Miller",
+      "company": "Manufacturing Talent Solutions",
+      "email": "robert.miller@mfgtalent.com",
+      "phone": "+1 (555) 678-9012",
+      "linkedin": "https://linkedin.com/in/robertmiller",
+      "specialization": "Manufacturing & Operations",
+      "experience": "15 years",
+      "location": "Detroit, MI",
+      "bio": "Veteran manufacturing recruiter with deep expertise in operations management, supply chain, quality assurance, and industrial engineering positions.",
+      "avatar": "/images/recruiters/robert-miller.jpg",
+      "slug": "robert-miller",
+      "featured": false,
+      "rating": 4.5,
+      "placements": 178
+    },
+    {
+      "id": "7",
+      "name": "Jennifer Davis",
+      "company": "HR Excellence Partners",
+      "email": "jennifer.davis@hrexcellence.com",
+      "phone": "+1 (555) 789-0123",
+      "linkedin": "https://linkedin.com/in/jenniferdavis",
+      "specialization": "Human Resources",
+      "experience": "9 years",
+      "location": "Atlanta, GA",
+      "bio": "HR recruitment specialist focusing on CHRO, HR Director, Talent Acquisition, and People Operations roles. Strong background in HR transformation and culture building.",
+      "avatar": "/images/recruiters/jennifer-davis.jpg",
+      "slug": "jennifer-davis",
+      "featured": true,
+      "rating": 4.9,
+      "placements": 167
+    },
+    {
+      "id": "8",
+      "name": "Alex Kumar",
+      "company": "Data & Analytics Recruiters",
+      "email": "alex.kumar@datarecruit.com",
+      "phone": "+1 (555) 890-1234",
+      "linkedin": "https://linkedin.com/in/alexkumar",
+      "specialization": "Data Science & Analytics",
+      "experience": "5 years",
+      "location": "Seattle, WA",
+      "bio": "Data science and analytics recruiter specializing in data scientists, machine learning engineers, data analysts, and AI researchers. Deep technical understanding.",
+      "avatar": "/images/recruiters/alex-kumar.jpg",
+      "slug": "alex-kumar",
+      "featured": false,
+      "rating": 4.7,
+      "placements": 145
+    },
+    {
+      "id": "9",
+      "name": "Maria Gonzalez",
+      "company": "Sales Force Recruiters",
+      "email": "maria.gonzalez@salesforce-recruit.com",
+      "phone": "+1 (555) 901-2345",
+      "linkedin": "https://linkedin.com/in/mariagonzalez",
+      "specialization": "Sales & Business Development",
+      "experience": "11 years",
+      "location": "Austin, TX",
+      "bio": "Sales recruitment expert with proven track record in placing top sales professionals, sales managers, and business development leaders across various industries.",
+      "avatar": "/images/recruiters/maria-gonzalez.jpg",
+      "slug": "maria-gonzalez",
+      "featured": false,
+      "rating": 4.6,
+      "placements": 221
+    },
+    {
+      "id": "10",
+      "name": "James Wilson",
+      "company": "Legal Talent Network",
+      "email": "james.wilson@legaltalent.com",
+      "phone": "+1 (555) 012-3456",
+      "linkedin": "https://linkedin.com/in/jameswilson",
+      "specialization": "Legal & Compliance",
+      "experience": "13 years",
+      "location": "Washington, DC",
+      "bio": "Legal recruiter specializing in attorneys, paralegals, compliance officers, and legal operations professionals. Extensive network in law firms and corporate legal departments.",
+      "avatar": "/images/recruiters/james-wilson.jpg",
+      "slug": "james-wilson",
+      "featured": false,
+      "rating": 4.8,
+      "placements": 112
+    },
+    {
+      "id": "11",
+      "name": "Amanda Foster",
+      "company": "Startup Talent Hub",
+      "email": "amanda.foster@startuptalent.com",
+      "phone": "+1 (555) 123-4567",
+      "linkedin": "https://linkedin.com/in/amandafoster",
+      "specialization": "Startup & Tech",
+      "experience": "6 years",
+      "location": "San Francisco, CA",
+      "bio": "Startup-focused recruiter helping early-stage companies build their founding teams. Expertise in technical and non-technical roles for high-growth startups.",
+      "avatar": "/images/recruiters/amanda-foster.jpg",
+      "slug": "amanda-foster",
+      "featured": true,
+      "rating": 4.9,
+      "placements": 198
+    },
+    {
+      "id": "12",
+      "name": "Kevin Park",
+      "company": "Cybersecurity Talent Group",
+      "email": "kevin.park@cybersectalent.com",
+      "phone": "+1 (555) 234-5678",
+      "linkedin": "https://linkedin.com/in/kevinpark",
+      "specialization": "Cybersecurity",
+      "experience": "8 years",
+      "location": "Arlington, VA",
+      "bio": "Cybersecurity recruitment specialist with deep understanding of security roles, clearance requirements, and the evolving threat landscape. Government and private sector experience.",
+      "avatar": "/images/recruiters/kevin-park.jpg",
+      "slug": "kevin-park",
+      "featured": false,
+      "rating": 4.7,
+      "placements": 156
+    },
+    {
+      "id": "13",
+      "name": "Rachel Green",
+      "company": "Education Talent Partners",
+      "email": "rachel.green@edutalent.com",
+      "phone": "+1 (555) 345-6789",
+      "linkedin": "https://linkedin.com/in/rachelgreen",
+      "specialization": "Education & Academia",
+      "experience": "10 years",
+      "location": "Philadelphia, PA",
+      "bio": "Education recruiter specializing in K-12 administrators, higher education faculty, EdTech professionals, and educational consultants. Passionate about improving education.",
+      "avatar": "/images/recruiters/rachel-green.jpg",
+      "slug": "rachel-green",
+      "featured": false,
+      "rating": 4.6,
+      "placements": 143
+    },
+    {
+      "id": "14",
+      "name": "Daniel Lee",
+      "company": "Remote Work Specialists",
+      "email": "daniel.lee@remotework.com",
+      "phone": "+1 (555) 456-7890",
+      "linkedin": "https://linkedin.com/in/daniellee",
+      "specialization": "Remote & Distributed Teams",
+      "experience": "4 years",
+      "location": "Denver, CO",
+      "bio": "Remote work recruitment specialist helping companies build distributed teams. Expert in remote-first culture, async communication, and global talent acquisition.",
+      "avatar": "/images/recruiters/daniel-lee.jpg",
+      "slug": "daniel-lee",
+      "featured": false,
+      "rating": 4.8,
+      "placements": 187
+    },
+    {
+      "id": "15",
+      "name": "Nicole Brown",
+      "company": "Diversity & Inclusion Recruiters",
+      "email": "nicole.brown@diversityrecruit.com",
+      "phone": "+1 (555) 567-8901",
+      "linkedin": "https://linkedin.com/in/nicolebrown",
+      "specialization": "Diversity & Inclusion",
+      "experience": "7 years",
+      "location": "Portland, OR",
+      "bio": "D&I recruitment specialist focused on building diverse and inclusive teams. Expertise in unconscious bias training, inclusive hiring practices, and diverse talent sourcing.",
+      "avatar": "/images/recruiters/nicole-brown.jpg",
+      "slug": "nicole-brown",
+      "featured": true,
+      "rating": 4.9,
+      "placements": 174
+    },
+    {
+      "id": "16",
+      "name": "Thomas Anderson",
+      "company": "Energy Sector Recruiters",
+      "email": "thomas.anderson@energyrecruit.com",
+      "phone": "+1 (555) 678-9012",
+      "linkedin": "https://linkedin.com/in/thomasanderson",
+      "specialization": "Energy & Utilities",
+      "experience": "14 years",
+      "location": "Houston, TX",
+      "bio": "Energy sector recruitment veteran with expertise in oil & gas, renewable energy, utilities, and energy technology roles. Deep industry knowledge and extensive network.",
+      "avatar": "/images/recruiters/thomas-anderson.jpg",
+      "slug": "thomas-anderson",
+      "featured": false,
+      "rating": 4.5,
+      "placements": 129
+    },
+    {
+      "id": "17",
+      "name": "Sophia Martinez",
+      "company": "Retail & Consumer Goods Talent",
+      "email": "sophia.martinez@retailtalent.com",
+      "phone": "+1 (555) 789-0123",
+      "linkedin": "https://linkedin.com/in/sophiamartinez",
+      "specialization": "Retail & Consumer Goods",
+      "experience": "9 years",
+      "location": "Miami, FL",
+      "bio": "Retail and consumer goods recruiter with expertise in merchandising, supply chain, brand management, and e-commerce roles. Strong understanding of retail trends.",
+      "avatar": "/images/recruiters/sophia-martinez.jpg",
+      "slug": "sophia-martinez",
+      "featured": false,
+      "rating": 4.7,
+      "placements": 165
+    },
+    {
+      "id": "18",
+      "name": "Ryan O'Connor",
+      "company": "Construction & Engineering Talent",
+      "email": "ryan.oconnor@constructiontalent.com",
+      "phone": "+1 (555) 890-1234",
+      "linkedin": "https://linkedin.com/in/ryanoconnor",
+      "specialization": "Construction & Engineering",
+      "experience": "12 years",
+      "location": "Phoenix, AZ",
+      "bio": "Construction and engineering recruiter specializing in project managers, civil engineers, architects, and skilled trades professionals. Strong network in infrastructure projects.",
+      "avatar": "/images/recruiters/ryan-oconnor.jpg",
+      "slug": "ryan-oconnor",
+      "featured": false,
+      "rating": 4.6,
+      "placements": 141
+    },
+    {
+      "id": "19",
+      "name": "Grace Kim",
+      "company": "Nonprofit Talent Solutions",
+      "email": "grace.kim@nonprofittalent.com",
+      "phone": "+1 (555) 901-2345",
+      "linkedin": "https://linkedin.com/in/gracekim",
+      "specialization": "Nonprofit & Social Impact",
+      "experience": "8 years",
+      "location": "Minneapolis, MN",
+      "bio": "Nonprofit recruitment specialist passionate about connecting mission-driven professionals with impactful organizations. Expertise in fundraising, program management, and advocacy roles.",
+      "avatar": "/images/recruiters/grace-kim.jpg",
+      "slug": "grace-kim",
+      "featured": false,
+      "rating": 4.8,
+      "placements": 158
+    },
+    {
+      "id": "20",
+      "name": "Marcus Johnson",
+      "company": "International Talent Bridge",
+      "email": "marcus.johnson@intltalent.com",
+      "phone": "+1 (555) 012-3456",
+      "linkedin": "https://linkedin.com/in/marcusjohnson",
+      "specialization": "International & Global Mobility",
+      "experience": "11 years",
+      "location": "New York, NY",
+      "bio": "International recruitment specialist with expertise in global mobility, expatriate assignments, and cross-border talent acquisition. Multilingual with global network.",
+      "avatar": "/images/recruiters/marcus-johnson.jpg",
+      "slug": "marcus-johnson",
+      "featured": true,
+      "rating": 4.9,
+      "placements": 192
+    },
+    {
+      "id": "1760618600918",
+      "name": "Rupesh Kumar",
+      "jobTitle": "Manager",
+      "company": "Gustav",
+      "email": "pabogi7791@apocaw.com",
+      "phone": "+919148521200",
+      "linkedin": "https://www.linkedin.com/in/duy-vo-18148b193/",
+      "website": "https://temp-mail.org/en/",
+      "specialization": "Finance",
+      "experience": "8",
+      "location": "India",
+      "remoteAvailable": false,
+      "bio": "test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test test test test test test test  test test test  test test test  test test test",
+      "avatar": "/uploads/headshot_1760618486985_4t0kwfuz6td.png",
+      "slug": "rupesh-kumar",
+      "featured": false,
+      "hidden": false,
+      "approved": true,
+      "status": "approved",
+      "submitterEmail": "pabogi7791@apocaw.com",
+      "rating": 0,
+      "reviewCount": 0,
+      "placements": 89,
+      "avgTimeToHire": 89,
+      "candidateSatisfaction": 89,
+      "clientRetention": 89,
+      "achievements": [
+        "Test",
+        "Test 1"
+      ],
+      "workExperience": [
+        {
+          "jobTitle": "Testet",
+          "company": "Gustav",
+          "startYear": "2022",
+          "endYear": "",
+          "isCurrentRole": true,
+          "duration": "2022 - Present",
+          "description": "Test "
+        }
+      ],
+      "rolesPlaced": [
+        "Software"
+      ],
+      "industries": [
+        "Software"
+      ],
+      "keywords": [
+        "Software"
+      ],
+      "languages": [
+        "Korean",
+        "Italian",
+        "German"
+      ],
+      "seniorityLevels": [
+        "Senior Level",
+        "Mid Level"
+      ],
+      "employmentTypes": [
+        "Contract",
+        "Freelance"
+      ],
+      "regions": [
+        "Europe",
+        "Asia Pacific"
+      ],
+      "certifications": [],
+      "availability": {
+        "accepting": true,
+        "nextAvailable": ""
+      },
+      "socialProof": {
+        "linkedinFollowers": 0,
+        "featuredIn": []
+      },
+      "testimonials": [],
+      "created_at": "2025-10-16T12:43:20.918Z",
+      "updated_at": "2025-10-16T12:43:30.622Z"
+    },
+    {
+      "id": "1760619827564",
+      "name": "Amit",
+      "jobTitle": "Panda",
+      "company": "Gustav",
+      "email": "https://temp-mail.org/en/",
+      "phone": "+919148521200",
+      "linkedin": "https://www.linkedin.com/in/khandakerrushad/",
+      "website": "https://temp-mail.org/en/",
+      "specialization": "Operations",
+      "experience": "8",
+      "location": "India",
+      "remoteAvailable": false,
+      "bio": "As a dedicated staffing professional, I specialize in connecting talented individuals with organizations where they can truly thrive. With a strong understanding of the recruitment landscape, I focus on identifying, engaging, and placing top-tier candidates across diverse industries. My approach goes beyond filling positions — I strive to build long-term relationships that create lasting value for both clients and candidates.\n\nOver the years, I’ve developed expertise in sourcing, screening, and onboarding candidates for roles ranging from entry-level positions to senior leadership. I take pride in understanding the unique culture and needs of every organization I work with, ensuring each placement aligns perfectly with business goals and team dynamics.\n\nDriven by data, empathy, and intuition, I leverage technology and modern recruitment tools to streamline the hiring process while maintaining a personal touch. My passion lies in helping companies grow with the right people — and helping individuals find careers that match their skills, ambitions, and values.\n\nWhether it’s building high-performing teams, improving hiring strategies, or enhancing employer branding, I bring a results-oriented mindset to every project. My mission is to make recruitment more human, efficient, and impactful in today’s fast-changing world of work.\n\nOutside of work, I’m committed to continuous learning — staying updated with the latest trends in talent acquisition, AI in recruitment, and workforce dynamics. I believe that great hiring decisions shape not just businesses but lives, and I’m proud to be part of that transformation every day.",
+      "avatar": "/uploads/headshot_1760619602058_hp2rj7vmbde.jpeg",
+      "slug": "amit",
+      "featured": false,
+      "hidden": false,
+      "approved": true,
+      "status": "approved",
+      "submitterEmail": "https://temp-mail.org/en/",
+      "rating": 0,
+      "reviewCount": 0,
+      "placements": 100,
+      "avgTimeToHire": 100,
+      "candidateSatisfaction": 100,
+      "clientRetention": 100,
+      "achievements": [
+        "Test "
+      ],
+      "workExperience": [
+        {
+          "jobTitle": "Test",
+          "company": "Test",
+          "startYear": "2013",
+          "endYear": "",
+          "isCurrentRole": true,
+          "duration": "2013 - Present",
+          "description": "Over the years, I’ve developed expertise in sourcing, screening, and onboarding candidates for roles ranging from entry-level positions to senior leadership. I take pride in understanding the unique culture and needs of every organization I work with, ensuring each placement aligns perfectly with business goals and team dynamics."
+        }
+      ],
+      "rolesPlaced": [
+        "Software"
+      ],
+      "industries": [
+        "Technology"
+      ],
+      "keywords": [
+        "recruiting"
+      ],
+      "languages": [
+        "Italian",
+        "Russian",
+        "French"
+      ],
+      "seniorityLevels": [
+        "Senior Level",
+        "Executive Level",
+        "Mid Level"
+      ],
+      "employmentTypes": [
+        "Contract",
+        "Temporary"
+      ],
+      "regions": [
+        "Canada",
+        "North America"
+      ],
+      "certifications": [],
+      "availability": {
+        "accepting": true,
+        "nextAvailable": ""
+      },
+      "socialProof": {
+        "linkedinFollowers": 0,
+        "featuredIn": []
+      },
+      "testimonials": [],
+      "created_at": "2025-10-16T13:03:47.564Z",
+      "updated_at": "2025-10-16T13:04:10.188Z"
+    },
+    {
+      "id": "1760622921393",
+      "name": "Rupesh Kuamar",
+      "jobTitle": "Local Test",
+      "company": "Local Test",
+      "email": "xites27655@apocaw.com",
+      "phone": "+919148521200",
+      "linkedin": "https://www.linkedin.com/in/khandakerrushad/",
+      "website": "https://chatgpt.com/c/68f0ec8f-6ee0-8321-92ae-864992c6380d",
+      "specialization": "Sales",
+      "experience": "9",
+      "location": "India",
+      "remoteAvailable": false,
+      "bio": "As a dedicated staffing professional, I specialize in connecting talented individuals with organizations where they can truly thrive. With a strong understanding of the recruitment landscape, I focus on identifying, engaging, and placing top-tier candidates across diverse industries. My approach goes beyond filling positions — I strive to build long-term relationships that create lasting value for both clients and candidates.\n\nOver the years, I’ve developed expertise in sourcing, screening, and onboarding candidates for roles ranging from entry-level positions to senior leadership. I take pride in understanding the unique culture and needs of every organization I work with, ensuring each placement aligns perfectly with business goals and team dynamics.\n\nDriven by data, empathy, and intuition, I leverage technology and modern recruitment tools to streamline the hiring process while maintaining a personal touch. My passion lies in helping companies grow with the right people — and helping individuals find careers that match their skills, ambitions, and values.\n\nWhether it’s building high-performing teams, improving hiring strategies, or enhancing employer branding, I bring a results-oriented mindset to every project. My mission is to make recruitment more human, efficient, and impactful in today’s fast-changing world of work.\n\nOutside of work, I’m committed to continuous learning — staying updated with the latest trends in talent acquisition, AI in recruitment, and workforce dynamics. I believe that great hiring decisions shape not just businesses but lives, and I’m proud to be part of that transformation every day.",
+      "avatar": "/uploads/headshot_1760622810269_c1ennxq65qq.jpeg",
+      "slug": "rupesh-kuamar",
+      "featured": false,
+      "hidden": false,
+      "approved": true,
+      "status": "approved",
+      "submitterEmail": "xites27655@apocaw.com",
+      "rating": 0,
+      "reviewCount": 0,
+      "placements": 90,
+      "avgTimeToHire": 90,
+      "candidateSatisfaction": 90,
+      "clientRetention": 90,
+      "achievements": [
+        "Test"
+      ],
+      "workExperience": [
+        {
+          "jobTitle": "Test",
+          "company": "Tesst",
+          "startYear": "2012",
+          "endYear": "",
+          "isCurrentRole": true,
+          "duration": "2012 - Present",
+          "description": "Whether it’s building high-performing teams, improving hiring strategies, or enhancing employer branding, I bring a results-oriented mindset to every project. My mission is to make recruitment more human, efficient, and impactful in today’s fast-changing world of work."
+        }
+      ],
+      "rolesPlaced": [
+        "Test"
+      ],
+      "industries": [
+        "test"
+      ],
+      "keywords": [
+        "Test"
+      ],
+      "languages": [
+        "Dutch",
+        "French"
+      ],
+      "seniorityLevels": [
+        "Senior Level",
+        "Executive Level"
+      ],
+      "employmentTypes": [
+        "Part-time",
+        "Freelance"
+      ],
+      "regions": [
+        "Latin America"
+      ],
+      "certifications": [],
+      "availability": {
+        "accepting": true,
+        "nextAvailable": ""
+      },
+      "socialProof": {
+        "linkedinFollowers": 0,
+        "featuredIn": []
+      },
+      "testimonials": [],
+      "created_at": "2025-10-16T13:55:21.393Z",
+      "updated_at": "2025-10-16T13:55:44.607Z"
+    },
+    {
+      "id": "1760616615992",
+      "name": "Persistence Test User",
+      "jobTitle": "Senior Persistence Recruiter",
+      "company": "Persistence Test Company",
+      "email": "persistence@example.com",
+      "phone": "+1555111222",
+      "linkedin": "https://linkedin.com/in/persistencetest",
+      "website": "https://persistencetest.com",
+      "specialization": "Software Engineering",
+      "experience": "5 years",
+      "location": "Persistence City, CA",
+      "remoteAvailable": false,
+      "bio": "This is a comprehensive test bio for persistence testing with sufficient words to meet the minimum requirement of 200 words. I am an experienced technical recruiter specializing in software engineering and data science roles. Throughout my career, I have successfully placed numerous candidates in top technology companies across Silicon Valley and beyond. My expertise includes full-stack development, machine learning, DevOps, and cloud computing roles. I have built strong relationships with both hiring managers and talented professionals, ensuring successful matches that benefit both parties. My approach combines deep technical understanding with excellent communication skills, allowing me to effectively bridge the gap between technical requirements and candidate capabilities. I pride myself on maintaining high standards of professionalism and delivering exceptional results for my clients. My track record includes consistent placement success, high candidate satisfaction rates, and long-term client relationships. I stay current with technology trends and market dynamics to provide the most relevant and valuable recruiting services. My goal is to continue growing my network and expertise while helping shape the future of technology through strategic talent acquisition and placement services. I believe in building lasting professional relationships and providing ongoing career guidance to both candidates and clients throughout their professional journey.",
+      "avatar": "https://ui-avatars.com/api/?name=Persistence%20Test%20User&background=3B82F6&color=fff&size=128",
+      "slug": "persistence-test-user",
+      "featured": false,
+      "hidden": false,
+      "approved": true,
+      "status": "approved",
+      "submitterEmail": "persistence@example.com",
+      "rating": 0,
+      "reviewCount": 0,
+      "placements": 125,
+      "avgTimeToHire": 32,
+      "candidateSatisfaction": 92,
+      "clientRetention": 87,
+      "achievements": [
+        "Placed 125+ engineers at top tech companies",
+        "Achieved 92% candidate satisfaction rate",
+        "Built network of 2500+ tech professionals"
+      ],
+      "workExperience": [
+        {
+          "jobTitle": "Senior Persistence Recruiter",
+          "company": "Persistence Test Company",
+          "startYear": "2019",
+          "endYear": "",
+          "isCurrentRole": true,
+          "duration": "2019 - Present",
+          "description": "Leading technical recruitment for enterprise clients"
+        }
+      ],
+      "rolesPlaced": [
+        "Software Engineer",
+        "Data Scientist",
+        "DevOps Engineer"
+      ],
+      "industries": [
+        "Technology",
+        "Fintech",
+        "Healthcare"
+      ],
+      "keywords": [
+        "Technical Recruiting",
+        "Software Engineering",
+        "Data Science"
+      ],
+      "languages": [
+        "English",
+        "German"
+      ],
+      "seniorityLevels": [
+        "Mid Level",
+        "Senior Level"
+      ],
+      "employmentTypes": [
+        "Full-time",
+        "Contract"
+      ],
+      "regions": [
+        "North America",
+        "Europe"
+      ],
+      "certifications": [
+        "Certified Technical Recruiter"
+      ],
+      "availability": {
+        "accepting": true,
+        "nextAvailable": "Immediately"
+      },
+      "socialProof": {
+        "linkedinFollowers": 2000,
+        "featuredIn": [
+          "TechCrunch"
+        ]
+      },
+      "testimonials": [],
+      "created_at": "2025-10-16T12:10:15.992Z",
+      "updated_at": "2025-10-16T12:27:59.436Z"
+    },
+    {
+      "id": "1760616876634",
+      "name": "Rupesh Kumar",
+      "jobTitle": "Manager",
+      "company": "Manager",
+      "email": "pabogi7791@apocaw.com",
+      "phone": "+919149521200",
+      "linkedin": "https://www.linkedin.com/in/duy-vo-18148b193/",
+      "website": "",
+      "specialization": "Operations",
+      "experience": "5",
+      "location": "New York",
+      "remoteAvailable": false,
+      "bio": "Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager Manager",
+      "avatar": "/uploads/headshot_1760616735743_oppfakng61.jpeg",
+      "slug": "rupesh-kumar",
+      "featured": false,
+      "hidden": false,
+      "approved": true,
+      "status": "approved",
+      "submitterEmail": "pabogi7791@apocaw.com",
+      "rating": 0,
+      "reviewCount": 0,
+      "placements": 8,
+      "avgTimeToHire": 8,
+      "candidateSatisfaction": 8,
+      "clientRetention": 8,
+      "achievements": [
+        "Test",
+        "Test"
+      ],
+      "workExperience": [
+        {
+          "jobTitle": "Test",
+          "company": "Test",
+          "startYear": "2017",
+          "endYear": "",
+          "isCurrentRole": true,
+          "duration": "2017 - Present",
+          "description": "Test"
+        }
+      ],
+      "rolesPlaced": [
+        "Software"
+      ],
+      "industries": [
+        "Technology"
+      ],
+      "keywords": [
+        "technical"
+      ],
+      "languages": [
+        "Dutch",
+        "German",
+        "Hindi"
+      ],
+      "seniorityLevels": [
+        "Mid Level",
+        "C-Suite"
+      ],
+      "employmentTypes": [
+        "Contract",
+        "Full-time"
+      ],
+      "regions": [
+        "United Kingdom"
+      ],
+      "certifications": [],
+      "availability": {
+        "accepting": true,
+        "nextAvailable": ""
+      },
+      "socialProof": {
+        "linkedinFollowers": 0,
+        "featuredIn": []
+      },
+      "testimonials": [],
+      "created_at": "2025-10-16T12:14:36.634Z",
+      "updated_at": "2025-10-16T12:28:14.857Z"
+    }
+  ],
+  "submissions": [],
+  "migrationDate": "2025-10-16T16:50:52.419Z",
+  "totalRecruiters": 25,
+  "totalSubmissions": 0
+}

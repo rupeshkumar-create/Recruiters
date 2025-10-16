@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const type = formData.get('type') as string;
 
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
@@ -23,33 +19,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File size must be less than 5MB' }, { status: 400 });
     }
 
-    // Generate unique filename
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 15);
-    const fileExtension = file.name.split('.').pop() || 'jpg';
-    const filename = `${type || 'upload'}_${timestamp}_${randomString}.${fileExtension}`;
-
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads');
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
-    }
-
-    // Convert file to buffer and save
+    // Convert file to base64 for temporary storage
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const filepath = join(uploadsDir, filename);
+    const base64 = buffer.toString('base64');
+    const mimeType = file.type;
     
-    await writeFile(filepath, buffer);
+    // Create data URL for immediate use
+    const dataUrl = `data:${mimeType};base64,${base64}`;
 
-    // Return the public URL
-    const publicUrl = `/uploads/${filename}`;
+    // For production, you would upload to a cloud service like:
+    // - Cloudinary
+    // - AWS S3
+    // - Supabase Storage
+    // - Vercel Blob
+    
+    // For now, we'll use the data URL which works but has limitations
+    console.log('Image uploaded successfully, size:', file.size, 'bytes');
 
     return NextResponse.json({ 
-      url: publicUrl,
-      filename: filename,
+      url: dataUrl,
+      filename: file.name,
       size: file.size,
-      type: file.type
+      type: file.type,
+      note: 'Using data URL for demo. For production, integrate with cloud storage.'
     });
 
   } catch (error) {
