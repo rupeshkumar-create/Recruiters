@@ -133,11 +133,31 @@ export async function PUT(
     console.log('🔄 PUT request received for recruiter:', params.id);
     
     const updates = await request.json()
+    
+    // Validate avatar size if it's a data URL
+    if (updates.avatar && updates.avatar.startsWith('data:')) {
+      const avatarSize = updates.avatar.length
+      console.log('📷 Avatar data URL size:', avatarSize, 'characters')
+      
+      // Limit data URL size to prevent database issues (1MB = ~1.3M characters in base64)
+      if (avatarSize > 1000000) { // 1MB limit
+        console.error('❌ Avatar data URL too large:', avatarSize)
+        return NextResponse.json({
+          success: false,
+          error: 'Avatar image is too large',
+          details: 'Please use a smaller image or upload via URL',
+          hint: 'Images should be under 500KB for direct upload'
+        }, { status: 400 });
+      }
+    }
+    
     console.log('📝 Update data received:', {
       id: params.id,
       name: updates.name,
       company: updates.company,
-      fieldsCount: Object.keys(updates).length
+      fieldsCount: Object.keys(updates).length,
+      hasAvatar: !!updates.avatar,
+      avatarType: updates.avatar ? (updates.avatar.startsWith('data:') ? 'data-url' : 'url') : 'none'
     });
     
     // Try Supabase first (primary storage) - only if properly configured

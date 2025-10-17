@@ -8,6 +8,7 @@ import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { compressImage, validateImageFile } from '../lib/imageUtils'
 
 interface HeadshotManagerProps {
   currentAvatar: string
@@ -56,38 +57,59 @@ export default function HeadshotManager({
     const file = event.target.files?.[0]
     if (!file) return
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file')
-      return
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB')
+    // Validate file
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      alert(validation.error)
       return
     }
 
     setUploading(true)
     try {
-      // For demo purposes, convert to base64 data URL
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const result = e.target?.result as string
-        setPreviewUrl(result)
-        setUrlInput(result)
-        onAvatarChange(result)
+      // Try to upload via API first (better for production)
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const uploadResponse = await fetch('/api/upload-headshot', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (uploadResponse.ok) {
+        const uploadResult = await uploadResponse.json()
+        console.log('✅ File uploaded successfully:', uploadResult)
+        
+        setPreviewUrl(uploadResult.url)
+        setUrlInput(uploadResult.url)
+        onAvatarChange(uploadResult.url)
         alert('Headshot updated successfully!')
         setUploading(false)
+        return
+      } else {
+        console.log('⚠️ Upload API failed, trying compression...')
       }
-      reader.onerror = () => {
-        alert('Failed to read image file')
+      
+      // Fallback: compress and convert to data URL
+      console.log('🔄 Compressing image for data URL...')
+      const compressedDataUrl = await compressImage(file, 300, 0.7) // Smaller size, good quality
+      
+      // Check compressed size
+      if (compressedDataUrl.length > 800000) { // ~600KB limit for compressed data URLs
+        alert('Image is still too large after compression. Please use a smaller image or an image URL instead.')
         setUploading(false)
+        return
       }
-      reader.readAsDataURL(file)
+      
+      console.log('✅ Image compressed successfully')
+      setPreviewUrl(compressedDataUrl)
+      setUrlInput(compressedDataUrl)
+      onAvatarChange(compressedDataUrl)
+      alert('Headshot updated successfully!')
+      setUploading(false)
+      
     } catch (error) {
       console.error('Error processing file:', error)
-      alert('Failed to process image file')
+      alert('Failed to process image file. Please try using an image URL instead.')
       setUploading(false)
     }
   }
