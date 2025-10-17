@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-// Force migration data - the 3 recruiters that should be in production
+// Force migration data - updated with proper avatars and full dataset
 const FORCE_MIGRATION_DATA = [
   {
     "id": "1",
@@ -17,7 +17,7 @@ const FORCE_MIGRATION_DATA = [
     "location": "San Francisco, CA",
     "remote_available": true,
     "bio": "Passionate technical recruiter with 8+ years of experience connecting top engineering talent with innovative companies. I specialize in full-stack development, DevOps, and engineering leadership roles, with a proven track record of successful placements at unicorn startups and Fortune 500 companies.",
-    "avatar": "https://ui-avatars.com/api/?name=Sarah%20Johnson&background=3B82F6&color=fff&size=128",
+    "avatar": "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=128&h=128&fit=crop&crop=face",
     "slug": "sarah-johnson",
     "featured": true,
     "hidden": false,

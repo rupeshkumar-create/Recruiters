@@ -1,99 +1,98 @@
+#!/usr/bin/env node
+
+/**
+ * Test Supabase connection and table schema
+ */
+
 const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({ path: '.env.local' });
+
+const supabaseUrl = 'https://vgonkiijhwfmlmbztoka.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnb25raWlqaHdmbWxtYnp0b2thIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDQ1NTY3OCwiZXhwIjoyMDc2MDMxNjc4fQ.5w9GYTVa5u39MgkCS1COvrDNcF_u3PM2lnHxT9Hq5Uc';
 
 async function testSupabaseConnection() {
-  console.log('🔍 Testing Supabase Connection...\n');
-
-  // Check environment variables
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  console.log('Environment Variables:');
-  console.log('- NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
-  console.log('- NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅ Set' : '❌ Missing');
-  console.log('- SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? '✅ Set' : '❌ Missing');
-  console.log('');
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.log('❌ Missing required Supabase environment variables');
-    console.log('Please add them to your .env.local file:');
-    console.log('');
-    console.log('NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co');
-    console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key');
-    console.log('SUPABASE_SERVICE_ROLE_KEY=your_service_role_key');
-    return;
-  }
+  console.log('🧪 Testing Supabase Connection...\n');
 
   try {
-    // Test client connection
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    console.log('✅ Supabase client created successfully');
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
-    // Test database connection by checking tables
-    console.log('\n🔍 Testing database connection...');
-    
-    const { count, error: tablesError } = await supabase
+    // Test 1: Check if we can connect
+    console.log('1️⃣ Testing connection...');
+    const { data: tables, error: tablesError } = await supabase
       .from('recruiters')
-      .select('*', { count: 'exact', head: true });
+      .select('*')
+      .limit(1);
 
     if (tablesError) {
-      console.log('❌ Database connection failed:', tablesError.message);
+      console.log('   ❌ Connection error:', tablesError.message);
       
       if (tablesError.message.includes('relation "public.recruiters" does not exist')) {
-        console.log('\n💡 The recruiters table does not exist.');
-        console.log('Please run the SQL schema in your Supabase SQL Editor:');
-        console.log('1. Go to your Supabase dashboard');
-        console.log('2. Navigate to SQL Editor');
-        console.log('3. Run the schema from supabase_schema_varchar_fixed.sql');
-        console.log('4. Or run the trigger fix from SUPABASE_TRIGGER_FIX.md');
+        console.log('   💡 Table does not exist - need to create it');
+        return false;
       }
-      return;
+      
+      if (tablesError.message.includes('uuid')) {
+        console.log('   💡 Table exists but has UUID schema - need to recreate with VARCHAR');
+        return false;
+      }
+    } else {
+      console.log('   ✅ Connection successful!');
+      console.log('   📊 Current data count:', tables?.length || 0);
     }
 
-    console.log('✅ Database connection successful');
-    console.log(`📊 Recruiters table exists with ${count || 0} records`);
+    // Test 2: Try to insert a test record
+    console.log('\n2️⃣ Testing insert with VARCHAR ID...');
+    const testRecord = {
+      id: 'test-123',
+      name: 'Test User',
+      company: 'Test Company',
+      email: 'test@example.com',
+      phone: '+1234567890',
+      linkedin: 'https://linkedin.com/in/test',
+      specialization: 'Testing',
+      experience: '1 year',
+      location: 'Test City',
+      bio: 'Test bio',
+      avatar: 'https://example.com/avatar.jpg',
+      slug: 'test-user'
+    };
 
-    // Test service role key if available
-    if (supabaseServiceKey) {
-      console.log('\n🔍 Testing service role key...');
-      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      });
+    const { data: insertData, error: insertError } = await supabase
+      .from('recruiters')
+      .insert([testRecord])
+      .select();
 
-      const { data: adminTest, error: adminError } = await supabaseAdmin
-        .from('recruiters')
-        .select('count', { count: 'exact', head: true });
-
-      if (adminError) {
-        console.log('❌ Service role key test failed:', adminError.message);
-      } else {
-        console.log('✅ Service role key working correctly');
-      }
+    if (insertError) {
+      console.log('   ❌ Insert error:', insertError.message);
+      return false;
+    } else {
+      console.log('   ✅ Insert successful!');
+      
+      // Clean up test record
+      await supabase.from('recruiters').delete().eq('id', 'test-123');
+      console.log('   🧹 Test record cleaned up');
     }
 
-    // Test other tables
-    console.log('\n🔍 Testing other tables...');
-    
-    const { count: testimonialsCount, error: testimonialsError } = await supabase
-      .from('testimonials')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: submissionsCount, error: submissionsError } = await supabase
-      .from('submissions')
-      .select('*', { count: 'exact', head: true });
-
-    console.log('- Testimonials table:', testimonialsError ? `❌ Error: ${testimonialsError.message}` : `✅ OK (${testimonialsCount || 0} records)`);
-    console.log('- Submissions table:', submissionsError ? `❌ Error: ${submissionsError.message}` : `✅ OK (${submissionsCount || 0} records)`);
-
-    console.log('\n🎉 Supabase connection test completed!');
+    console.log('\n🎉 Supabase is ready for admin functionality!');
+    return true;
 
   } catch (error) {
-    console.log('❌ Connection test failed:', error.message);
+    console.error('❌ Test failed:', error.message);
+    return false;
   }
 }
 
-testSupabaseConnection();
+// Run the test
+testSupabaseConnection().then(success => {
+  if (success) {
+    console.log('\n✅ You can now run: curl -X POST http://localhost:3000/api/populate-supabase');
+  } else {
+    console.log('\n❌ Please run the SQL setup first in Supabase Dashboard → SQL Editor');
+    console.log('📄 Use the SQL from: COMPLETE_SUPABASE_SETUP_FINAL.sql');
+  }
+  process.exit(success ? 0 : 1);
+});

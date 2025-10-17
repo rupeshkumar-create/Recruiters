@@ -5,6 +5,8 @@ import { writeFile, readFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import { join } from 'path'
 
+// Migration data is imported from the main route to ensure consistency
+
 const RECRUITERS_FILE = join(process.cwd(), 'data', 'recruiters.json')
 
 // Load recruiters from file (server-side)
@@ -17,13 +19,30 @@ async function loadRecruitersFromFile() {
     
     if (existsSync(RECRUITERS_FILE)) {
       const data = await readFile(RECRUITERS_FILE, 'utf-8')
-      return JSON.parse(data)
+      const fileData = JSON.parse(data)
+      console.log(`📁 Loaded ${fileData.length} recruiters from file`);
+      return fileData
     }
   } catch (error) {
     console.error('Error loading recruiters from file:', error)
   }
   
-  // Fallback to RecruiterStorage
+  console.log('📁 No file found, loading from migration data via API');
+  // Fallback to getting data from the main API
+  try {
+    const response = await fetch('http://localhost:3000/api/recruiters');
+    if (response.ok) {
+      const apiData = await response.json();
+      console.log(`📡 Loaded ${apiData.length} recruiters from API`);
+      // Save to file for future use
+      await saveRecruitersToFile(apiData);
+      return apiData;
+    }
+  } catch (apiError) {
+    console.error('Error loading from API:', apiError);
+  }
+  
+  // Final fallback to RecruiterStorage
   return await RecruiterStorage.getAll()
 }
 
@@ -46,11 +65,13 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Try Supabase first
+    // Try Supabase first (primary storage) - only if properly configured
     if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY && 
         process.env.NEXT_PUBLIC_SUPABASE_URL && 
-        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase')) {
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase') &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
       
+      console.log(`📡 Loading recruiter ${params.id} from Supabase...`);
       const { data, error } = await supabaseAdmin
         .from('recruiters')
         .select('*')
@@ -58,26 +79,36 @@ export async function GET(
         .single();
 
       if (!error && data) {
+        console.log(`✅ Found recruiter ${data.name} in Supabase`);
         return NextResponse.json(data);
       }
       
-      console.log('Supabase GET error:', error);
+      console.log('❌ Supabase GET error:', error);
     }
 
-    // Fallback to file storage
-    const recruiters = await loadRecruitersFromFile()
-    const recruiter = recruiters.find((r: any) => r.id === params.id)
+    // Fallback to migration data only if Supabase not configured
+    console.log('📁 Falling back to migration data...');
+    
+    // Use global data directly to avoid circular dependency
+    if (!global.recruitersData) {
+      // Import initial data
+      const { INITIAL_MIGRATION_RECRUITERS } = await import('../route');
+      global.recruitersData = [...INITIAL_MIGRATION_RECRUITERS];
+    }
+    
+    const recruiter = global.recruitersData.find((r: any) => r.id === params.id);
     
     if (!recruiter) {
       return NextResponse.json(
         { error: 'Recruiter not found' },
         { status: 404 }
-      )
+      );
     }
 
-    return NextResponse.json(recruiter)
+    return NextResponse.json(recruiter);
+
   } catch (error) {
-    console.error('Error fetching recruiter:', error)
+    console.error('❌ Error fetching recruiter:', error)
     return NextResponse.json(
       { error: 'Failed to fetch recruiter' },
       { status: 500 }
@@ -92,14 +123,15 @@ export async function PUT(
 ) {
   try {
     const updates = await request.json()
-    console.log('Updating recruiter:', params.id, 'with data:', updates);
+    console.log('🔄 Updating recruiter:', params.id, 'with data:', Object.keys(updates));
     
-    // Try Supabase first
+    // Try Supabase first (primary storage) - only if properly configured
     if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY && 
         process.env.NEXT_PUBLIC_SUPABASE_URL && 
-        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase')) {
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase') &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
       
-      console.log('Using Supabase for recruiter update');
+      console.log('📡 Using Supabase for recruiter update');
       
       // Convert frontend format to Supabase format
       const supabaseData = {
@@ -152,43 +184,83 @@ export async function PUT(
         .single();
 
       if (!error && data) {
-        console.log('✅ Recruiter updated in Supabase successfully');
+        console.log('✅ Recruiter updated in Supabase successfully:', data.name);
         return NextResponse.json({
           success: true,
-          message: 'Recruiter updated successfully',
+          message: 'Recruiter updated successfully in Supabase',
           recruiter: data
         });
       }
       
       console.error('❌ Supabase update error:', error);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to update recruiter in Supabase',
+        details: error.message
+      }, { status: 500 });
     }
 
-    // Fallback to file storage
-    console.log('Using file storage for recruiter update');
-    const recruiters = await loadRecruitersFromFile()
-    const recruiterIndex = recruiters.findIndex((r: any) => r.id === params.id)
+    // Fallback: Update in-memory migration data
+    console.log('📝 Updating in-memory migration data...');
+    
+    // Get current recruiters from the main API
+    const response = await fetch('http://localhost:3000/api/recruiters');
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: 'Failed to fetch current recruiters' },
+        { status: 500 }
+      );
+    }
+    
+    const currentRecruiters = await response.json();
+    const recruiterIndex = currentRecruiters.findIndex((r: any) => r.id === params.id);
     
     if (recruiterIndex === -1) {
       return NextResponse.json(
         { error: 'Recruiter not found' },
         { status: 404 }
-      )
+      );
     }
 
     // Update the recruiter
-    const updatedRecruiter = { ...recruiters[recruiterIndex], ...updates, updated_at: new Date().toISOString() }
-    recruiters[recruiterIndex] = updatedRecruiter
+    const updatedRecruiter = { 
+      ...currentRecruiters[recruiterIndex], 
+      ...updates, 
+      updated_at: new Date().toISOString() 
+    };
     
-    // Save back to file
-    await saveRecruitersToFile(recruiters)
-
+    currentRecruiters[recruiterIndex] = updatedRecruiter;
+    
+    // Update the main API with the new data
+    const updateResponse = await fetch('http://localhost:3000/api/recruiters', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(currentRecruiters)
+    });
+    
+    if (!updateResponse.ok) {
+      return NextResponse.json(
+        { error: 'Failed to update recruiters data' },
+        { status: 500 }
+      );
+    }
+    
+    console.log('✅ Recruiter updated in memory successfully:', updatedRecruiter.name);
     return NextResponse.json({
       success: true,
-      message: 'Recruiter updated successfully',
-      recruiter: updatedRecruiter
-    })
+      message: 'Recruiter updated successfully in memory (temporary)',
+      recruiter: updatedRecruiter,
+      note: 'Changes will be lost on server restart. Set up Supabase for persistence.'
+    });
+
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to update recruiter in memory mode',
+      hint: 'Set up Supabase for reliable admin changes - see IMMEDIATE_ADMIN_FIX.md'
+    }, { status: 500 });
+
   } catch (error) {
-    console.error('Error updating recruiter:', error)
+    console.error('❌ Error updating recruiter:', error)
     return NextResponse.json(
       { error: 'Failed to update recruiter' },
       { status: 500 }
