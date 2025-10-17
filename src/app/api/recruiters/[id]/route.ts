@@ -130,8 +130,15 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('🔄 PUT request received for recruiter:', params.id);
+    
     const updates = await request.json()
-    console.log('🔄 Updating recruiter:', params.id, 'with data:', Object.keys(updates));
+    console.log('📝 Update data received:', {
+      id: params.id,
+      name: updates.name,
+      company: updates.company,
+      fieldsCount: Object.keys(updates).length
+    });
     
     // Try Supabase first (primary storage) - only if properly configured
     if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY && 
@@ -184,6 +191,8 @@ export async function PUT(
         updated_at: new Date().toISOString()
       };
 
+      console.log('📡 Attempting Supabase update for recruiter:', params.id);
+      
       const { data, error } = await supabaseAdmin
         .from('recruiters')
         .update(supabaseData)
@@ -191,21 +200,37 @@ export async function PUT(
         .select()
         .single();
 
-      if (!error && data) {
-        console.log('✅ Recruiter updated in Supabase successfully:', data.name);
-        return NextResponse.json({
-          success: true,
-          message: 'Recruiter updated successfully in Supabase',
-          recruiter: data
+      if (error) {
+        console.error('❌ Supabase update error:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
         });
+        
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to update recruiter in Supabase',
+          details: error.message,
+          hint: error.hint || 'Check Supabase connection and table schema'
+        }, { status: 500 });
       }
-      
-      console.error('❌ Supabase update error:', error);
+
+      if (!data) {
+        console.error('❌ No data returned from Supabase update');
+        return NextResponse.json({
+          success: false,
+          error: 'Update completed but no data returned',
+          details: 'Recruiter may not exist or update failed silently'
+        }, { status: 404 });
+      }
+
+      console.log('✅ Recruiter updated in Supabase successfully:', data.name);
       return NextResponse.json({
-        success: false,
-        error: 'Failed to update recruiter in Supabase',
-        details: error.message
-      }, { status: 500 });
+        success: true,
+        message: 'Recruiter updated successfully in Supabase',
+        recruiter: data
+      });
     }
 
     // Fallback: Update in-memory migration data
@@ -260,12 +285,6 @@ export async function PUT(
       recruiter: updatedRecruiter,
       note: 'Changes will be lost on server restart. Set up Supabase for persistence.'
     });
-
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to update recruiter in memory mode',
-      hint: 'Set up Supabase for reliable admin changes - see IMMEDIATE_ADMIN_FIX.md'
-    }, { status: 500 });
 
   } catch (error) {
     console.error('❌ Error updating recruiter:', error)
