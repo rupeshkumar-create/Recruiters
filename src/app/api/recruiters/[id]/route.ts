@@ -65,7 +65,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Try Supabase first (primary storage) - only if properly configured
+    // Always try Supabase first in production
     if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY && 
         process.env.NEXT_PUBLIC_SUPABASE_URL && 
         !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase') &&
@@ -84,6 +84,14 @@ export async function GET(
       }
       
       console.log('❌ Supabase GET error:', error);
+      
+      // In production, return 404 if not found in Supabase
+      if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json(
+          { error: 'Recruiter not found' },
+          { status: 404 }
+        );
+      }
     }
 
     // Fallback to migration data only if Supabase not configured

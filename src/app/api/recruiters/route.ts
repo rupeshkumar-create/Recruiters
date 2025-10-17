@@ -285,7 +285,7 @@ export const INITIAL_MIGRATION_RECRUITERS = [
 // GET /api/recruiters - Get all recruiters
 export async function GET() {
   try {
-    // Try Supabase first (primary storage) - only if properly configured
+    // Always try Supabase first in production
     if (supabaseAdmin && process.env.SUPABASE_SERVICE_ROLE_KEY && 
         process.env.NEXT_PUBLIC_SUPABASE_URL && 
         !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your_supabase') &&
@@ -301,13 +301,54 @@ export async function GET() {
 
       if (!error && data) {
         console.log(`✅ Loaded ${data.length} recruiters from Supabase`);
-        return NextResponse.json(data);
+        
+        // If no data in Supabase, auto-populate it
+        if (data.length === 0) {
+          console.log('📥 No data in Supabase, auto-populating...');
+          try {
+            const populateResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/populate-supabase`, {
+              method: 'POST'
+            });
+            
+            if (populateResponse.ok) {
+              console.log('✅ Auto-populated Supabase, refetching data...');
+              const { data: newData, error: newError } = await supabaseAdmin
+                .from('recruiters')
+                .select('*')
+                .eq('approved', true)
+                .eq('hidden', false)
+                .order('created_at', { ascending: false });
+              
+              if (!newError && newData) {
+                console.log(`✅ Loaded ${newData.length} recruiters after auto-population`);
+                return NextResponse.json(newData);
+              }
+            }
+          } catch (populateError) {
+            console.error('❌ Auto-populate failed:', populateError);
+          }
+        } else {
+          return NextResponse.json(data);
+        }
       } else {
         console.error('❌ Supabase error:', error);
-        console.log('🔄 Database might be empty, using migration data as fallback');
+        
+        // In production, if Supabase fails, return empty array rather than fallback
+        if (process.env.NODE_ENV === 'production') {
+          console.log('🚨 Production mode: returning empty array due to Supabase error');
+          return NextResponse.json([]);
+        }
       }
     } else {
       console.log('⚠️ Supabase not configured properly');
+      
+      // In production, if Supabase not configured, return error
+      if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json({
+          error: 'Database not configured',
+          message: 'Supabase configuration required for production'
+        }, { status: 500 });
+      }
     }
 
     // Fallback to migration data only if Supabase is not configured
