@@ -89,7 +89,7 @@ export async function POST() {
       success: true,
       message: 'Migration data synced to Supabase successfully',
       synced: supabaseRecruiters.length,
-      recruiters: supabaseRecruiters.map(r => ({ id: r.id, name: r.name }))
+      recruiters: supabaseRecruiters.map((r: any) => ({ id: r.id, name: r.name }))
     });
 
   } catch (error) {

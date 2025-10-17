@@ -83,7 +83,7 @@ export async function POST() {
       success: true,
       message: 'Supabase populated with initial recruiter data successfully',
       inserted: supabaseRecruiters.length,
-      recruiters: supabaseRecruiters.map(r => ({ id: r.id, name: r.name }))
+      recruiters: supabaseRecruiters.map((r: any) => ({ id: r.id, name: r.name }))
     });
 
   } catch (error) {
