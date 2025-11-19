@@ -232,4 +232,4 @@ CREATE POLICY "Anyone can delete logos" ON storage.objects
 -- SUCCESS MESSAGE
 -- ========================================
 
-SELECT 'Complete Supabase setup finished successfully! Ready for admin functionality.' as result;
+SELECT 'Complete Supabase setup finished successfully! Ready for admin functionality.' as result
