@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ExternalLink, Search } from 'lucide-react'
 import MultiStepSubmissionForm from './MultiStepSubmissionForm'
 import HorizontalFilter from './HorizontalFilter'
+import RecruiterSidebarPreview from './RecruiterSidebarPreview'
 
 
 interface ClientHomePageProps {
@@ -35,6 +36,8 @@ export default function ClientHomePage({ initialRecruiters }: ClientHomePageProp
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [suggestions, setSuggestions] = useState<any[]>([])
+  const [selectedRecruiter, setSelectedRecruiter] = useState<any | null>(null)
+  const [showSidebar, setShowSidebar] = useState(false)
   const router = useRouter()
 
   // Extract categories from initial data
@@ -372,7 +375,10 @@ export default function ClientHomePage({ initialRecruiters }: ClientHomePageProp
                 <div 
                   key={recruiter.id}
                   className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 group h-full flex flex-col shadow-sm cursor-pointer"
-                  onClick={() => router.push(`/tool/${recruiter.slug}`)}
+                  onClick={() => {
+                    setSelectedRecruiter(recruiter)
+                    setShowSidebar(true)
+                  }}
                 >
                   <div className="flex items-start gap-4 mb-4">
                     <div className="w-12 h-12 flex-shrink-0">
@@ -440,7 +446,15 @@ export default function ClientHomePage({ initialRecruiters }: ClientHomePageProp
         />
       )}
 
-
+      {/* Recruiter Sidebar Preview */}
+      <RecruiterSidebarPreview
+        recruiter={selectedRecruiter}
+        isOpen={showSidebar}
+        onClose={() => {
+          setShowSidebar(false)
+          setSelectedRecruiter(null)
+        }}
+      />
     </div>
   )
 }
